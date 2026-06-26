@@ -189,6 +189,18 @@ class BudgingViewModel(
         }
     }
 
+    fun topUpBudget(amountMinor: Long) {
+        viewModelScope.launch {
+            runCatching {
+                budgetRepository.topUpActiveBudget(amountMinor)
+            }.onSuccess {
+                _message.value = "Budget topped up."
+            }.onFailure {
+                _message.value = it.message ?: "Could not top up budget."
+            }
+        }
+    }
+
     fun deleteCategory(categoryId: Long) {
         viewModelScope.launch {
             runCatching { budgetRepository.deleteCategory(categoryId) }

@@ -56,6 +56,9 @@ interface BudgetPeriodDao {
     @Query("UPDATE budget_periods SET is_active = :isActive WHERE id = :periodId")
     suspend fun setActive(periodId: Long, isActive: Boolean)
 
+    @Query("UPDATE budget_periods SET total_amount_minor = total_amount_minor + :amountMinor WHERE id = :periodId")
+    suspend fun topUp(periodId: Long, amountMinor: Long)
+
     @Query("DELETE FROM budget_periods WHERE id = :periodId")
     suspend fun deleteById(periodId: Long)
 

@@ -205,6 +205,7 @@ fun BudgingRoot(
                             onArchiveCategory = viewModel::setCategoryArchived,
                             onDeleteCategory = viewModel::deleteCategory,
                             onDeleteBudget = viewModel::deleteBudgetPeriod,
+                            onTopUpBudget = viewModel::topUpBudget,
                         )
                         Screen.LogExpense -> LogExpenseScreen(
                             state = expenseEntryState,

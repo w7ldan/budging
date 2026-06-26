@@ -16,6 +16,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -49,6 +50,7 @@ fun BudgetSetupScreen(
     onArchiveCategory: (categoryId: Long, isArchived: Boolean) -> Unit,
     onDeleteCategory: (categoryId: Long) -> Unit,
     onDeleteBudget: (periodId: Long, wasActive: Boolean) -> Unit,
+    onTopUpBudget: (amountMinor: Long) -> Unit = {},
 ) {
     val spacing = BudgingTheme.spacing
     var budgetName by rememberSaveable(state.activePeriodId) { mutableStateOf(state.periodName) }
@@ -64,6 +66,8 @@ fun BudgetSetupScreen(
     var editCategoryAmountText by rememberSaveable(state.activePeriodId, editingCategoryId) { mutableStateOf("") }
     var editCategoryIconKey by rememberSaveable(state.activePeriodId, editingCategoryId) { mutableStateOf("other") }
     var showDeleteBudgetConfirm by remember { mutableStateOf(false) }
+    var showTopUpDialog by remember { mutableStateOf(false) }
+    var topUpAmountText by remember { mutableStateOf("") }
 
     val totalForPreview = totalAmountText.toLongOrNull() ?: 0L
     val projectedUnallocated = totalForPreview - state.categories
@@ -109,6 +113,25 @@ fun BudgetSetupScreen(
             },
         )
     }
+    if (showTopUpDialog) {
+        TopUpDialog(
+            currencyCode = currencyCode.ifBlank { "IDR" },
+            amountText = topUpAmountText,
+            onAmountChange = { topUpAmountText = it.filter(Char::isDigit) },
+            onDismiss = {
+                showTopUpDialog = false
+                topUpAmountText = ""
+            },
+            onConfirm = {
+                val amount = topUpAmountText.toLongOrNull() ?: 0L
+                if (amount > 0) {
+                    onTopUpBudget(amount)
+                }
+                showTopUpDialog = false
+                topUpAmountText = ""
+            },
+        )
+    }
 
     LazyColumn(
         modifier = Modifier.padding(horizontal = spacing.xl),
@@ -150,6 +173,14 @@ fun BudgetSetupScreen(
                     ),
                 ) {
                     Text("Save Setup", style = MaterialTheme.typography.labelLarge)
+                }
+                if (state.activePeriodId != null) {
+                    OutlinedButton(
+                        onClick = { showTopUpDialog = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Top Up Budget")
+                    }
                 }
                 if (state.activePeriodId != null) {
                     TextButton(
@@ -338,6 +369,52 @@ private fun DeleteBudgetDialog(
                         ),
                     ) {
                         Text(confirmLabel)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TopUpDialog(
+    currencyCode: String,
+    amountText: String,
+    onAmountChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Text("Top Up Budget", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    "Add extra funds to your active budget period. This increases the total budget and unallocated balance.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                MinimalAmountInput(
+                    currencyCode = currencyCode.ifBlank { "IDR" },
+                    value = amountText,
+                    onValueChange = onAmountChange,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End),
+                ) {
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    Button(
+                        onClick = onConfirm,
+                        shape = RoundedCornerShape(14.dp),
+                        enabled = (amountText.toLongOrNull() ?: 0L) > 0,
+                    ) {
+                        Text("Top Up")
                     }
                 }
             }

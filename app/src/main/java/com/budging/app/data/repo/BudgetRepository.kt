@@ -351,6 +351,14 @@ class BudgetRepository(
         refreshQuickAccess()
     }
 
+    suspend fun topUpActiveBudget(amountMinor: Long) {
+        require(amountMinor > 0) { "Top-up amount must be positive." }
+        val active = budgetPeriodDao.getActive()
+            ?: throw IllegalArgumentException("No active budget period to top up.")
+        budgetPeriodDao.topUp(active.id, amountMinor)
+        refreshQuickAccess()
+    }
+
     suspend fun setCategoryArchived(categoryId: Long, isArchived: Boolean) {
         budgetCategoryDao.setArchived(categoryId, isArchived)
         refreshQuickAccess()
