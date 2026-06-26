@@ -12,6 +12,8 @@ object QuickAccessNavigation {
 
     fun logExpenseIntent(context: Context): Intent = baseIntent(context, Screen.LogExpense.route)
 
+    fun historyIntent(context: Context): Intent = baseIntent(context, Screen.TransactionHistory.route)
+
     fun openDashboardActivityIntent(context: Context): Intent =
         Intent(context, OpenDashboardActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
@@ -29,6 +31,7 @@ object QuickAccessNavigation {
     fun routeFromIntent(intent: Intent?): String? = when (intent?.getStringExtra(EXTRA_ROUTE)) {
         Screen.Dashboard.route -> Screen.Dashboard.route
         Screen.LogExpense.route -> Screen.LogExpense.route
+        Screen.TransactionHistory.route -> Screen.TransactionHistory.route
         else -> null
     }
 

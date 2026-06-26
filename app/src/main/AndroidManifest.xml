@@ -29,6 +29,11 @@
             android:exported="true"
             android:theme="@style/Theme.Budging" />
 
+        <activity
+            android:name=".quickaccess.OpenHistoryActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Budging" />
+
         <receiver
             android:name=".widget.BudgingStatusWidgetReceiver"
             android:exported="true">
