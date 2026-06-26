@@ -17,6 +17,7 @@ class AppContainer(context: Context) {
     ).build()
 
     val budgetRepository = BudgetRepository(
+        appContext = context.applicationContext,
         database = database,
         budgetPeriodDao = database.budgetPeriodDao(),
         budgetCategoryDao = database.budgetCategoryDao(),

@@ -41,7 +41,11 @@ import com.budging.app.ui.theme.BudgingTheme
 import androidx.compose.material3.MaterialTheme
 
 @Composable
-fun BudgingRoot(viewModel: BudgingViewModel) {
+fun BudgingRoot(
+    viewModel: BudgingViewModel,
+    externalRoute: String? = null,
+    onExternalRouteConsumed: () -> Unit = {},
+) {
     val navController = rememberNavController()
     val dashboardState by viewModel.dashboardState.collectAsStateWithLifecycle()
     val budgetSetupState by viewModel.budgetSetupState.collectAsStateWithLifecycle()
@@ -57,6 +61,18 @@ fun BudgingRoot(viewModel: BudgingViewModel) {
             snackbarHostState.showSnackbar(it)
             viewModel.clearMessage()
         }
+    }
+
+    LaunchedEffect(externalRoute) {
+        val route = externalRoute ?: return@LaunchedEffect
+        navController.navigate(route) {
+            popUpTo(navController.graph.findStartDestination().id) {
+                saveState = true
+            }
+            launchSingleTop = true
+            restoreState = true
+        }
+        onExternalRouteConsumed()
     }
 
     Scaffold(

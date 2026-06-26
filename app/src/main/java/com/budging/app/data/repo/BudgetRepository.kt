@@ -1,5 +1,6 @@
 package com.budging.app.data.repo
 
+import android.content.Context
 import androidx.room.withTransaction
 import com.budging.app.data.local.BudgingDatabase
 import com.budging.app.data.local.dao.BudgetCategoryDao
@@ -21,10 +22,12 @@ import com.budging.app.data.model.ExpenseEntryState
 import com.budging.app.data.model.RecentTransaction
 import com.budging.app.domain.BudgetMath
 import com.budging.app.domain.SplitExpensePlanner
+import com.budging.app.quickaccess.QuickAccessUpdater
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import java.time.Instant
 import java.time.LocalDate
@@ -36,6 +39,7 @@ private const val STATUS_PENDING = "PENDING"
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class BudgetRepository(
+    private val appContext: Context,
     private val database: BudgingDatabase,
     private val budgetPeriodDao: BudgetPeriodDao,
     private val budgetCategoryDao: BudgetCategoryDao,
@@ -44,6 +48,9 @@ class BudgetRepository(
 ) {
     private val shortDateFormatter = DateTimeFormatter.ofPattern("dd MMM")
     private val longDateFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy")
+
+    suspend fun getDashboardSnapshot(referenceDate: LocalDate = LocalDate.now()): DashboardState =
+        observeDashboard(referenceDate).first()
 
     fun observeDashboard(referenceDate: LocalDate = LocalDate.now()): Flow<DashboardState> =
         budgetPeriodDao.observeActive(referenceDate.toEpochDay()).flatMapLatest { period ->
@@ -221,7 +228,9 @@ class BudgetRepository(
         }
 
         val periodId = budgetPeriodDao.upsert(period)
-        return applyPendingImpactsForPeriod(periodId)
+        val result = applyPendingImpactsForPeriod(periodId)
+        refreshQuickAccess()
+        return result
     }
 
     suspend fun saveCategory(
@@ -251,10 +260,12 @@ class BudgetRepository(
             isArchived = existing?.isArchived ?: false,
         )
         budgetCategoryDao.upsert(category)
+        refreshQuickAccess()
     }
 
     suspend fun setCategoryArchived(categoryId: Long, isArchived: Boolean) {
         budgetCategoryDao.setArchived(categoryId, isArchived)
+        refreshQuickAccess()
     }
 
     suspend fun deleteCategory(categoryId: Long) {
@@ -262,6 +273,7 @@ class BudgetRepository(
             "Category already has transactions. Archive it instead of deleting."
         }
         budgetCategoryDao.deleteById(categoryId)
+        refreshQuickAccess()
     }
 
     suspend fun logNormalExpense(
@@ -310,6 +322,7 @@ class BudgetRepository(
                 ),
             )
         }
+        refreshQuickAccess()
     }
 
     suspend fun logSplitExpense(
@@ -384,10 +397,16 @@ class BudgetRepository(
             }
             budgetImpactDao.insertAll(impacts)
         }
+        refreshQuickAccess()
     }
 
     suspend fun deleteTransaction(transactionId: Long) {
         transactionDao.deleteById(transactionId)
+        refreshQuickAccess()
+    }
+
+    private suspend fun refreshQuickAccess() {
+        QuickAccessUpdater.refresh(appContext)
     }
 
     private suspend fun applyPendingImpactsForPeriod(periodId: Long): PendingApplicationResult {
