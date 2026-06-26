@@ -77,4 +77,10 @@ interface BudgetImpactDao {
 
     @Query("SELECT COUNT(*) FROM budget_impacts WHERE status = 'PENDING'")
     suspend fun countPendingImpacts(): Int
+
+    @Query("SELECT * FROM budget_impacts ORDER BY id")
+    suspend fun getAll(): List<BudgetImpactEntity>
+
+    @Query("DELETE FROM budget_impacts")
+    suspend fun deleteAll()
 }

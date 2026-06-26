@@ -48,4 +48,10 @@ interface BudgetPeriodDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(period: BudgetPeriodEntity): Long
+
+    @Query("SELECT * FROM budget_periods ORDER BY id")
+    suspend fun getAll(): List<BudgetPeriodEntity>
+
+    @Query("DELETE FROM budget_periods")
+    suspend fun deleteAll()
 }

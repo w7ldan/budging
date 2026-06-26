@@ -29,7 +29,10 @@ class MainActivity : ComponentActivity() {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     BudgingRoot(
                         viewModel = viewModel(
-                            factory = BudgingViewModelFactory(app.container.budgetRepository),
+                            factory = BudgingViewModelFactory(
+                                app.container.budgetRepository,
+                                app.container.backupRepository,
+                            ),
                         ),
                         externalRoute = externalRoute,
                         onExternalRouteConsumed = { externalRoute = null },

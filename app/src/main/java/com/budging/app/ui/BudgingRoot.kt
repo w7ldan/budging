@@ -198,7 +198,13 @@ fun BudgingRoot(
                 )
             }
             composable(Screen.Settings.route) {
-                SettingsScreen()
+                SettingsScreen(
+                    backupMessage = viewModel.backupMessage.collectAsStateWithLifecycle().value,
+                    onExportJson = viewModel::exportJson,
+                    onImportJson = viewModel::importJson,
+                    onExportCsv = viewModel::exportCsv,
+                    onClearBackupMessage = viewModel::clearBackupMessage,
+                )
             }
         }
     }

@@ -3,6 +3,7 @@ package com.budging.app.data
 import android.content.Context
 import androidx.room.Room
 import com.budging.app.data.local.BudgingDatabase
+import com.budging.app.data.backup.BackupRepository
 import com.budging.app.data.repo.BudgetRepository
 
 class AppContainer(context: Context) {
@@ -23,5 +24,10 @@ class AppContainer(context: Context) {
         budgetCategoryDao = database.budgetCategoryDao(),
         transactionDao = database.transactionDao(),
         budgetImpactDao = database.budgetImpactDao(),
+    )
+
+    val backupRepository = BackupRepository(
+        appContext = context.applicationContext,
+        database = database,
     )
 }

@@ -59,4 +59,10 @@ interface BudgetCategoryDao {
 
     @Query("DELETE FROM budget_categories WHERE id = :categoryId")
     suspend fun deleteById(categoryId: Long)
+
+    @Query("SELECT * FROM budget_categories ORDER BY id")
+    suspend fun getAll(): List<BudgetCategoryEntity>
+
+    @Query("DELETE FROM budget_categories")
+    suspend fun deleteAll()
 }

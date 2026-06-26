@@ -3,6 +3,9 @@ package com.budging.app.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import android.net.Uri
+import com.budging.app.data.backup.BackupRepository
+import com.budging.app.data.backup.URIResult
 import com.budging.app.data.model.BudgetSetupState
 import com.budging.app.data.model.CategoryDetailState
 import com.budging.app.data.model.DashboardState
@@ -25,6 +28,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalCoroutinesApi::class)
 class BudgingViewModel(
     private val budgetRepository: BudgetRepository,
+    private val backupRepository: BackupRepository,
 ) : ViewModel() {
     val dashboardState: StateFlow<DashboardState> = budgetRepository.observeDashboard()
         .stateIn(
@@ -228,15 +232,54 @@ class BudgingViewModel(
             _message.value = "Transaction deleted."
         }
     }
+
+    // --- Backup ---
+
+    private val _backupMessage = MutableStateFlow<BackupMessage?>(null)
+    val backupMessage: StateFlow<BackupMessage?> = _backupMessage
+
+    fun clearBackupMessage() {
+        _backupMessage.value = null
+    }
+
+    fun exportJson(uri: Uri) {
+        viewModelScope.launch {
+            backupRepository.exportJson(uri)
+                .onSuccess { _backupMessage.value = BackupMessage.Success("JSON backup exported.") }
+                .onFailure { _backupMessage.value = BackupMessage.Error(it.message ?: "Export failed.") }
+        }
+    }
+
+    fun importJson(uri: Uri) {
+        viewModelScope.launch {
+            backupRepository.importJson(URIResult(uri))
+                .onSuccess { _backupMessage.value = BackupMessage.Success("Data restored from backup.") }
+                .onFailure { _backupMessage.value = BackupMessage.Error(it.message ?: "Import failed.") }
+        }
+    }
+
+    fun exportCsv(uri: Uri) {
+        viewModelScope.launch {
+            backupRepository.exportCsv(uri)
+                .onSuccess { _backupMessage.value = BackupMessage.Success("CSV exported.") }
+                .onFailure { _backupMessage.value = BackupMessage.Error(it.message ?: "CSV export failed.") }
+        }
+    }
+}
+
+sealed class BackupMessage {
+    data class Success(val text: String) : BackupMessage()
+    data class Error(val text: String) : BackupMessage()
 }
 
 class BudgingViewModelFactory(
     private val budgetRepository: BudgetRepository,
+    private val backupRepository: BackupRepository,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(BudgingViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return BudgingViewModel(budgetRepository) as T
+            return BudgingViewModel(budgetRepository, backupRepository) as T
         }
         error("Unknown ViewModel class: ${modelClass.name}")
     }
