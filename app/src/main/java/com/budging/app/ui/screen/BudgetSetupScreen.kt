@@ -61,7 +61,7 @@ fun BudgetSetupScreen(
 
     LazyColumn(
         modifier = Modifier.padding(horizontal = spacing.xl),
-        contentPadding = PaddingValues(bottom = spacing.xxl + 56.dp),
+        contentPadding = PaddingValues(bottom = spacing.xxl + 88.dp),
         verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
         item { SectionHeader(eyebrow = "Budget Period", title = "Set Budget") }
