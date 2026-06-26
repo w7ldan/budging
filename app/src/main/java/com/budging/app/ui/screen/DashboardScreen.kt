@@ -1,8 +1,11 @@
 package com.budging.app.ui.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -19,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.budging.app.data.model.DashboardState
-import com.budging.app.ui.component.BudgetMetricRow
 import com.budging.app.ui.component.BudgetProgressBar
 import com.budging.app.ui.component.BudgetScaffoldCard
 import com.budging.app.ui.component.CategoryIconBubble
@@ -36,6 +38,7 @@ fun DashboardScreen(
     val spacing = BudgingTheme.spacing
     LazyColumn(
         modifier = Modifier.padding(horizontal = spacing.xl),
+        contentPadding = PaddingValues(bottom = spacing.xxl + 56.dp),
         verticalArrangement = Arrangement.spacedBy(spacing.xl),
     ) {
         if (!state.hasActiveBudget) {
@@ -43,85 +46,62 @@ fun DashboardScreen(
             return@LazyColumn
         }
 
-        item {
-            SectionHeader(eyebrow = "Current Budget", title = state.periodName)
-        }
-        item {
-            HeroCard(state = state)
-        }
-        item {
-            BudgetScaffoldCard {
-                Text(
-                    "Budget Period",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(state.periodDateRangeLabel, style = MaterialTheme.typography.titleLarge)
-                BudgetMetricRow(
-                    label = "Spent This Period",
-                    value = formatCurrency(state.totalSpentMinor, state.currencyCode),
-                    strong = true,
-                )
-                BudgetMetricRow(
-                    label = "Unallocated",
-                    value = formatCurrency(state.unallocatedAmountMinor, state.currencyCode),
-                )
-            }
-        }
-        item {
-            SectionHeader(title = "Category Budgets")
-        }
-        items(state.categories) { category ->
-            val accent = categoryAccent(category.name)
-            BudgetScaffoldCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onOpenCategory(category.id) },
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    CategoryIconBubble(categoryName = category.name)
-                    Surface(
-                        color = accent.background,
-                        contentColor = accent.tint,
-                        shape = RoundedCornerShape(999.dp),
-                    ) {
-                        Text(
-                            "${formatCurrency(category.remainingAmountMinor, state.currencyCode)} left",
-                            modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
-                            style = MaterialTheme.typography.labelLarge,
-                            maxLines = 1,
-                        )
-                    }
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(category.name, style = MaterialTheme.typography.headlineMedium)
-                    Text(
-                        "${formatCurrency(category.spentAmountMinor, state.currencyCode)} / ${formatCurrency(category.allocatedAmountMinor, state.currencyCode)}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                BudgetProgressBar(
-                    progress = category.progressPercent / 100f,
-                    color = accent.tint,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                )
-            }
-        }
-        item {
-            SectionHeader(title = "Recent Spending")
-        }
-        if (state.recentTransactions.isEmpty()) {
+        item { SectionHeader(eyebrow = "Current Budget", title = state.periodName) }
+        item { HeroCard(state) }
+        item { SectionHeader(title = "Category Budgets") }
+        if (state.categories.isEmpty()) {
             item {
                 EmptyDashboardCard(
-                    title = "No expenses yet",
-                    body = "Your latest spending will appear here once you start logging expenses.",
+                    title = "No categories yet",
+                    body = "Open Set Budget to add category allocations for this budget.",
                 )
             }
+        } else {
+            items(state.categories) { category ->
+                val accent = categoryAccent(category.name)
+                BudgetScaffoldCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenCategory(category.id) },
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        CategoryIconBubble(categoryName = category.name)
+                        Surface(
+                            color = accent.background,
+                            contentColor = accent.tint,
+                            shape = RoundedCornerShape(999.dp),
+                        ) {
+                            Text(
+                                "${formatCurrency(category.remainingAmountMinor, state.currencyCode)} left",
+                                modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
+                                style = MaterialTheme.typography.labelLarge,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(category.name, style = MaterialTheme.typography.headlineMedium)
+                        Text(
+                            "${formatCurrency(category.spentAmountMinor, state.currencyCode)} / ${formatCurrency(category.allocatedAmountMinor, state.currencyCode)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    BudgetProgressBar(
+                        progress = category.progressPercent / 100f,
+                        color = accent.tint,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    )
+                }
+            }
+        }
+        item { SectionHeader(title = "Recent Spending") }
+        if (state.recentTransactions.isEmpty()) {
+            item { EmptyDashboardCard("No expenses yet", "Your latest spending will appear here once you start logging expenses.") }
         } else {
             items(state.recentTransactions) { transaction ->
                 BudgetScaffoldCard {
@@ -147,11 +127,7 @@ fun DashboardScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 if (transaction.note != null || transaction.splitCount > 1) {
-                                    Text(
-                                        transaction.paidDateLabel,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
+                                    Text(transaction.paidDateLabel, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         }
@@ -169,7 +145,6 @@ fun DashboardScreen(
 
 @Composable
 private fun HeroCard(state: DashboardState) {
-    val spacing = BudgingTheme.spacing
     val spentProgress = progress(state.totalSpentMinor, state.totalBudgetMinor)
     val leftPercent = ((1f - spentProgress) * 100).toInt().coerceIn(0, 100)
     val spentPercent = (spentProgress * 100).toInt().coerceIn(0, 100)
@@ -178,72 +153,40 @@ private fun HeroCard(state: DashboardState) {
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                "Total Remaining",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Text("Total Remaining", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
                 formatCurrency(state.totalRemainingMinor, state.currencyCode),
                 style = MaterialTheme.typography.displayLarge,
                 color = MaterialTheme.colorScheme.primary,
                 maxLines = 1,
             )
-            Text(
-                "of ${formatCurrency(state.totalBudgetMinor, state.currencyCode)} budget",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.outline,
-            )
+            Text("of ${formatCurrency(state.totalBudgetMinor, state.currencyCode)} budget", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
         }
         BudgetProgressBar(
             progress = spentProgress,
             color = MaterialTheme.colorScheme.primary,
             trackColor = MaterialTheme.colorScheme.surfaceVariant,
         )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("$leftPercent% Left", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("$spentPercent% Spent", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(spacing.md),
-        ) {
-            HeroMetricTile(
-                modifier = Modifier.weight(1f),
-                label = "Safe Daily Spend",
-                value = "${formatCurrency(state.safeDailyMinor, state.currencyCode)}/day",
+        Text(
+            "${formatCurrency(state.safeDailyMinor, state.currencyCode)}/day safe daily spend / ${state.daysRemainingInclusive} days left",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                state.periodDateRangeLabel,
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.background, RoundedCornerShape(999.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            HeroMetricTile(
-                modifier = Modifier.weight(1f),
-                label = "Days Left",
-                value = state.daysRemainingInclusive.toString(),
-            )
-        }
-    }
-}
-
-@Composable
-private fun HeroMetricTile(
-    modifier: Modifier = Modifier,
-    label: String,
-    value: String,
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.background,
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
         }
     }
 }

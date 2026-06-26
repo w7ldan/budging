@@ -2,17 +2,19 @@ package com.budging.app.ui.screen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -21,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -42,23 +45,6 @@ fun BudgetSetupScreen(
     onDeleteCategory: (categoryId: Long) -> Unit,
 ) {
     val spacing = BudgingTheme.spacing
-    val darkFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedTextColor = MaterialTheme.colorScheme.onPrimary,
-        unfocusedTextColor = MaterialTheme.colorScheme.onPrimary,
-        focusedContainerColor = MaterialTheme.colorScheme.primary,
-        unfocusedContainerColor = MaterialTheme.colorScheme.primary,
-        focusedBorderColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.35f),
-        unfocusedBorderColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.18f),
-        focusedLabelColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
-        unfocusedLabelColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
-        cursorColor = MaterialTheme.colorScheme.onPrimary,
-        focusedPlaceholderColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.45f),
-        unfocusedPlaceholderColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.45f),
-        focusedPrefixColor = MaterialTheme.colorScheme.onPrimary,
-        unfocusedPrefixColor = MaterialTheme.colorScheme.onPrimary,
-        focusedSupportingTextColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.65f),
-        unfocusedSupportingTextColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.65f),
-    )
     var budgetName by rememberSaveable(state.activePeriodId) { mutableStateOf(state.periodName) }
     var totalAmountText by rememberSaveable(state.activePeriodId) { mutableStateOf(state.totalAmountMinor.takeIf { it > 0 }?.toString().orEmpty()) }
     var currencyCode by rememberSaveable(state.activePeriodId) { mutableStateOf(state.currencyCode) }
@@ -75,61 +61,26 @@ fun BudgetSetupScreen(
 
     LazyColumn(
         modifier = Modifier.padding(horizontal = spacing.xl),
+        contentPadding = PaddingValues(bottom = spacing.xxl + 56.dp),
         verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
+        item { SectionHeader(eyebrow = "Budget Period", title = "Set Budget") }
         item {
-            SectionHeader(eyebrow = "Budget Period", title = "Set Budget")
-        }
-        item {
-            BudgetScaffoldCard(dark = true) {
-                Text("How much should this budget period last?", style = MaterialTheme.typography.labelLarge.copy(color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.78f)))
-                OutlinedTextField(
+            BudgetScaffoldCard {
+                Text("How much should this budget period last?", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                MinimalAmountInput(
+                    currencyCode = currencyCode.ifBlank { "IDR" },
                     value = totalAmountText,
                     onValueChange = { totalAmountText = it.filter(Char::isDigit) },
-                    modifier = Modifier.fillMaxWidth(),
-                    prefix = { Text(currencyCode.ifBlank { "IDR" }) },
-                    textStyle = MaterialTheme.typography.displayLarge,
-                    placeholder = { Text("0") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    colors = darkFieldColors,
                 )
-                OutlinedTextField(
-                    value = budgetName,
-                    onValueChange = { budgetName = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Budget Period Name") },
-                    singleLine = true,
-                    colors = darkFieldColors,
-                )
+                MinimalInputRow("Budget Period Name", budgetName, modifier = Modifier.fillMaxWidth()) { budgetName = it }
                 Row(horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
-                    OutlinedTextField(
-                        value = startDateText,
-                        onValueChange = { startDateText = it },
-                        modifier = Modifier.weight(1f),
-                        label = { Text("Start Date") },
-                        supportingText = { Text("YYYY-MM-DD") },
-                        singleLine = true,
-                        colors = darkFieldColors,
-                    )
-                    OutlinedTextField(
-                        value = endDateText,
-                        onValueChange = { endDateText = it },
-                        modifier = Modifier.weight(1f),
-                        label = { Text("End Date") },
-                        supportingText = { Text("YYYY-MM-DD") },
-                        singleLine = true,
-                        colors = darkFieldColors,
-                    )
+                    MinimalInputRow("Start Date", startDateText, "YYYY-MM-DD", Modifier.weight(1f)) { startDateText = it }
+                    MinimalInputRow("End Date", endDateText, "YYYY-MM-DD", Modifier.weight(1f)) { endDateText = it }
                 }
-                OutlinedTextField(
-                    value = currencyCode,
-                    onValueChange = { currencyCode = it.uppercase().take(3) },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Currency") },
-                    singleLine = true,
-                    colors = darkFieldColors,
-                )
+                MinimalInputRow("Currency", currencyCode, modifier = Modifier.fillMaxWidth()) {
+                    currencyCode = it.uppercase().take(3)
+                }
                 Button(
                     onClick = {
                         onSaveBudget(
@@ -141,18 +92,19 @@ fun BudgetSetupScreen(
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.primary,
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
                     ),
                 ) {
-                    Text("Save Budget Period")
+                    Text("Save Setup", style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
         item {
             BudgetScaffoldCard {
-                SectionHeader(title = "Unallocated Balance")
+                Text("Unallocated Balance", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
                     formatCurrency(projectedUnallocated, currencyCode.ifBlank { "IDR" }),
                     style = MaterialTheme.typography.headlineLarge,
@@ -164,21 +116,10 @@ fun BudgetSetupScreen(
         item {
             BudgetScaffoldCard {
                 SectionHeader(title = "Add Category")
-                OutlinedTextField(
-                    value = categoryName,
-                    onValueChange = { categoryName = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Category Name") },
-                    singleLine = true,
-                )
-                OutlinedTextField(
-                    value = categoryAmountText,
-                    onValueChange = { categoryAmountText = it.filter(Char::isDigit) },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Allocated Amount") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                )
+                MinimalInputRow("Category Name", categoryName, modifier = Modifier.fillMaxWidth()) { categoryName = it }
+                MinimalInputRow("Allocated Amount", categoryAmountText, modifier = Modifier.fillMaxWidth(), keyboardType = KeyboardType.Number) {
+                    categoryAmountText = it.filter(Char::isDigit)
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
                     Button(
                         onClick = {
@@ -196,9 +137,7 @@ fun BudgetSetupScreen(
                             editingCategoryId = null
                             categoryName = ""
                             categoryAmountText = ""
-                        }) {
-                            Text("Cancel")
-                        }
+                        }) { Text("Cancel") }
                     }
                 }
                 if (!state.hasActiveBudget) {
@@ -206,9 +145,7 @@ fun BudgetSetupScreen(
                 }
             }
         }
-        item {
-            SectionHeader(title = "Category Allocation")
-        }
+        item { SectionHeader(title = "Category Allocation") }
         if (state.categories.isEmpty()) {
             item {
                 BudgetScaffoldCard {
@@ -222,12 +159,13 @@ fun BudgetSetupScreen(
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(spacing.md), verticalAlignment = Alignment.CenterVertically) {
                             CategoryIconBubble(category.name)
                             Column {
                                 Text(category.name, style = MaterialTheme.typography.titleMedium)
-                                Text(if (category.isArchived) "Archived" else "Active", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(if (category.isArchived) "Archived" else "Active", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                         Text(formatCurrency(category.allocatedAmountMinor, state.currencyCode), style = MaterialTheme.typography.titleMedium)
@@ -250,6 +188,61 @@ fun BudgetSetupScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun MinimalAmountInput(
+    currencyCode: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Bottom) {
+            Text(currencyCode, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.headlineLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                decorationBox = { inner ->
+                    if (value.isBlank()) {
+                        Text("0", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.outline)
+                    }
+                    inner()
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun MinimalInputRow(
+    label: String,
+    value: String,
+    hint: String = "",
+    modifier: Modifier = Modifier,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    onValueChange: (String) -> Unit,
+) {
+    Surface(modifier = modifier, color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(14.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+                decorationBox = { inner ->
+                    if (value.isBlank() && hint.isNotBlank()) {
+                        Text(hint, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.outline)
+                    }
+                    inner()
+                },
+            )
         }
     }
 }

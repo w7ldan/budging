@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -13,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.EditNote
@@ -20,7 +22,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,9 +32,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.budging.app.data.model.ExpenseEntryState
 import com.budging.app.domain.SplitExpensePlanner
@@ -67,6 +69,7 @@ fun LogExpenseScreen(
 
     LazyColumn(
         modifier = Modifier.padding(horizontal = spacing.xl),
+        contentPadding = PaddingValues(bottom = spacing.xxl + 88.dp),
         verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
         item { SectionHeader(eyebrow = "Expense", title = "Log Expense") }
@@ -80,37 +83,38 @@ fun LogExpenseScreen(
             return@LazyColumn
         }
         item {
-            BudgetScaffoldCard {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(spacing.sm),
-                ) {
-                    Text("Enter Amount", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(
-                        formatCurrency(amountMinor, state.currencyCode),
-                        style = MaterialTheme.typography.displayLarge,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                    )
-                    Text(state.dateRangeLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(spacing.sm),
+            ) {
+                Text("Amount", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    formatCurrency(amountMinor, state.currencyCode),
+                    style = MaterialTheme.typography.displayLarge,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                )
+                Text(state.dateRangeLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         if (state.pendingImpactCount > 0) {
             item {
                 BudgetScaffoldCard {
                     Text("Pending future impacts", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "${state.pendingImpactCount} split impact(s) are waiting for future budget periods or matching future categories.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Text("${state.pendingImpactCount} split impact(s) are waiting for future budget periods or matching future categories.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(spacing.md)) {
-                Text("Choose Category", style = MaterialTheme.typography.titleMedium)
+        if (state.categories.isEmpty()) {
+            item {
+                CompactEmptyCard(
+                    title = "No categories yet",
+                    body = "Add categories in Set Budget before logging expenses.",
+                )
+            }
+        } else {
+            item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
                     items(state.categories) { category ->
                         BudgetChip(
@@ -124,112 +128,66 @@ fun LogExpenseScreen(
             }
         }
         item {
-            BudgetScaffoldCard {
-                Text("Budget Impact", style = MaterialTheme.typography.titleMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                    SplitModeChip(
-                        selected = splitPeriodCount == 1,
-                        label = "Count all now",
-                        onClick = { splitPeriodCount = 1 },
-                    )
-                    SplitModeChip(
-                        selected = splitPeriodCount > 1,
-                        label = "Split across periods",
-                        onClick = { if (splitPeriodCount == 1) splitPeriodCount = 2 },
-                    )
-                }
-                if (splitPeriodCount > 1) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Periods", style = MaterialTheme.typography.bodyLarge)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            TextButton(onClick = { splitPeriodCount = (splitPeriodCount - 1).coerceAtLeast(2) }) {
-                                Text("−")
-                            }
-                            Text("$splitPeriodCount", style = MaterialTheme.typography.titleLarge)
-                            TextButton(onClick = {
-                                splitPeriodCount = (splitPeriodCount + 1).coerceAtMost(SplitExpensePlanner.MAX_SPLIT_PERIODS)
-                            }) {
-                                Text("+")
+            Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(16.dp)) {
+                Column(modifier = Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.md)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Advanced", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(if (splitPeriodCount == 1) "Count all now" else "Split $splitPeriodCount periods", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
+                        SplitModeChip(selected = splitPeriodCount == 1, label = "Count all now", onClick = { splitPeriodCount = 1 })
+                        SplitModeChip(selected = splitPeriodCount > 1, label = "Split across periods", onClick = { if (splitPeriodCount == 1) splitPeriodCount = 2 })
+                    }
+                    if (splitPeriodCount > 1) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("Periods", style = MaterialTheme.typography.bodyLarge)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                TextButton(onClick = { splitPeriodCount = (splitPeriodCount - 1).coerceAtLeast(2) }) { Text("-") }
+                                Text("$splitPeriodCount", style = MaterialTheme.typography.titleLarge)
+                                TextButton(onClick = { splitPeriodCount = (splitPeriodCount + 1).coerceAtMost(SplitExpensePlanner.MAX_SPLIT_PERIODS) }) { Text("+") }
                             }
                         }
+                        BudgetMetricRow("Per-period impact", formatCurrency(currentImpactAmount, state.currencyCode))
+                        BudgetMetricRow("Current period impact", formatCurrency(currentImpactAmount, state.currencyCode), strong = true)
                     }
-                    BudgetMetricRow("Per-period impact", formatCurrency(currentImpactAmount, state.currencyCode))
-                    BudgetMetricRow("Current period impact", formatCurrency(currentImpactAmount, state.currencyCode), strong = true)
                 }
             }
         }
         item {
-            BudgetScaffoldCard {
-                Row(horizontalArrangement = Arrangement.spacedBy(spacing.md), verticalAlignment = Alignment.CenterVertically) {
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(horizontal = spacing.md, vertical = spacing.lg),
-                        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(Icons.Outlined.CalendarToday, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Column {
-                            Text("Date", style = MaterialTheme.typography.labelMedium)
-                            Text(dateText, style = MaterialTheme.typography.bodyLarge)
-                        }
-                    }
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(horizontal = spacing.md, vertical = spacing.lg),
-                        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(Icons.Outlined.EditNote, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Column {
-                            Text("Note", style = MaterialTheme.typography.labelMedium)
-                            Text(if (noteText.isBlank()) "Optional" else noteText, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
-                        }
-                    }
-                }
-                OutlinedTextField(
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing.md), verticalAlignment = Alignment.CenterVertically) {
+                CompactInputCard(
+                    modifier = Modifier.weight(1f),
+                    icon = { Icon(Icons.Outlined.CalendarToday, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    label = "Date",
                     value = dateText,
+                    hint = "YYYY-MM-DD",
                     onValueChange = { dateText = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Expense Date") },
-                    supportingText = { Text("YYYY-MM-DD") },
-                    singleLine = true,
                 )
-                OutlinedTextField(
+                CompactInputCard(
+                    modifier = Modifier.weight(1f),
+                    icon = { Icon(Icons.Outlined.EditNote, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    label = "Note",
                     value = noteText,
+                    hint = "Optional",
                     onValueChange = { noteText = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Note") },
-                    singleLine = true,
                 )
             }
         }
         item {
-            BudgetScaffoldCard {
-                Keypad(
-                    onDigit = { digit -> amountText += digit },
-                    onDelete = { amountText = if (amountText.isNotEmpty()) amountText.dropLast(1) else "" },
-                    onClear = { amountText = "" },
-                )
-            }
+            Keypad(
+                onDigit = { digit -> amountText += digit },
+                onDelete = { amountText = if (amountText.isNotEmpty()) amountText.dropLast(1) else "" },
+                onClear = { amountText = "" },
+            )
         }
         item {
             Button(
-                onClick = {
-                    onSaveExpense(amountMinor, selectedCategoryId ?: 0L, dateText, noteText, splitPeriodCount)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(68.dp),
+                onClick = { onSaveExpense(amountMinor, selectedCategoryId ?: 0L, dateText, noteText, splitPeriodCount) },
+                modifier = Modifier.fillMaxWidth().height(68.dp),
                 shape = RoundedCornerShape(22.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -246,6 +204,8 @@ fun LogExpenseScreen(
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.82f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
@@ -262,15 +222,50 @@ private fun SplitModeChip(
     Text(
         text = label,
         modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
             .background(
-                if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                if (selected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
+                RoundedCornerShape(999.dp),
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         style = MaterialTheme.typography.labelLarge,
     )
+}
+
+@Composable
+private fun CompactInputCard(
+    modifier: Modifier = Modifier,
+    icon: @Composable () -> Unit,
+    label: String,
+    value: String,
+    hint: String,
+    onValueChange: (String) -> Unit,
+) {
+    Surface(modifier = modifier, color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(16.dp)) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            icon()
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                BasicTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                    decorationBox = { inner ->
+                        if (value.isBlank()) {
+                            Text(hint, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.outline)
+                        }
+                        inner()
+                    },
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -291,22 +286,24 @@ private fun Keypad(
         rows.forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
                 row.forEach { key ->
-                    Box(
+                    Surface(
                         modifier = Modifier
                             .weight(1f)
-                            .height(58.dp)
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(vertical = spacing.md)
+                            .height(54.dp)
                             .clickable {
                                 when (key) {
                                     "Del" -> onDelete()
                                     else -> onDigit(key)
                                 }
                             },
-                        contentAlignment = Alignment.Center,
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        tonalElevation = 0.dp,
+                        shadowElevation = 0.dp,
                     ) {
-                        Text(key, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(key, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
             }
@@ -315,11 +312,21 @@ private fun Keypad(
             "Clear",
             modifier = Modifier
                 .align(Alignment.CenterHorizontally)
-                .clip(RoundedCornerShape(999.dp))
                 .clickable(onClick = onClear)
                 .padding(horizontal = spacing.md, vertical = spacing.sm),
             color = MaterialTheme.colorScheme.primary,
             style = MaterialTheme.typography.labelLarge,
         )
+    }
+}
+
+@Composable
+private fun CompactEmptyCard(
+    title: String,
+    body: String,
+) {
+    BudgetScaffoldCard {
+        Text(title, style = MaterialTheme.typography.titleMedium)
+        Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
