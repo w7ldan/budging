@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.budging.app.domain.AppClock
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -79,7 +80,7 @@ fun DateInputRow(
 
     if (showPicker) {
         BudgetDatePickerDialog(
-            initialDate = selectedDate ?: LocalDate.now(),
+            initialDate = selectedDate ?: AppClock.System.today(),
             allowClear = allowEmpty,
             onDismiss = { showPicker = false },
             onClear = {

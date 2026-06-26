@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.budging.app.domain.AppClock
 import com.budging.app.quickaccess.QuickAccessNavigation
 import com.budging.app.ui.BudgingRoot
 import com.budging.app.ui.BudgingViewModelFactory
@@ -30,8 +31,15 @@ class MainActivity : ComponentActivity() {
                     BudgingRoot(
                         viewModel = viewModel(
                             factory = BudgingViewModelFactory(
-                                app.container.budgetRepository,
+                                app.container.dashboardRepository,
+                                app.container.budgetPeriodRepository,
+                                app.container.categoryRepository,
+                                app.container.expenseRepository,
+                                app.container.transactionRepository,
+                                app.container.recurringRepository,
+                                app.container.pendingImpactService,
                                 app.container.backupRepository,
+                                AppClock.System,
                             ),
                         ),
                         externalRoute = externalRoute,

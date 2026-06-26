@@ -4,8 +4,8 @@ import com.budging.app.data.local.entity.BudgetCategoryEntity
 import com.budging.app.data.local.entity.BudgetImpactEntity
 import com.budging.app.data.local.entity.BudgetPeriodEntity
 import com.budging.app.data.local.entity.TransactionEntity
+import com.budging.app.domain.AppClock
 import java.time.Instant
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 object CsvExporter {
@@ -39,7 +39,7 @@ object CsvExporter {
                     tx.id.toString(),
                     tx.title,
                     dateTimeFormatter.format(
-                        Instant.ofEpochMilli(tx.paidAtEpochMillis).atZone(ZoneId.systemDefault()),
+                        Instant.ofEpochMilli(tx.paidAtEpochMillis).atZone(AppClock.System.zoneId()),
                     ),
                     tx.amountMinor.toString(),
                     period?.currencyCode ?: "",

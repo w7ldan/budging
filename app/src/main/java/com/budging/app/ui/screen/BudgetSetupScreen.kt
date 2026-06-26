@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.budging.app.data.model.BudgetSetupState
@@ -39,6 +40,7 @@ import com.budging.app.ui.component.DateInputRow
 import com.budging.app.ui.component.IconDropdownField
 import com.budging.app.ui.component.SectionHeader
 import com.budging.app.ui.component.resolveCategoryIconKey
+import com.budging.app.ui.format.DigitGroupingVisualTransformation
 import com.budging.app.ui.format.formatCurrency
 import com.budging.app.ui.theme.BudgingTheme
 
@@ -438,6 +440,7 @@ private fun MinimalAmountInput(
                 singleLine = true,
                 textStyle = MaterialTheme.typography.headlineLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                visualTransformation = DigitGroupingVisualTransformation,
                 decorationBox = { inner ->
                     Box(modifier = Modifier.fillMaxWidth()) {
                         if (value.isBlank()) {
@@ -470,6 +473,7 @@ private fun MinimalInputRow(
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                 keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+                visualTransformation = if (keyboardType == KeyboardType.Number) DigitGroupingVisualTransformation else VisualTransformation.None,
                 decorationBox = { inner ->
                     Box(modifier = Modifier.fillMaxWidth()) {
                         if (value.isBlank() && hint.isNotBlank()) {

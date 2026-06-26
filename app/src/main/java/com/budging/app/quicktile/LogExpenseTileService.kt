@@ -52,7 +52,7 @@ class LogExpenseTileService : TileService() {
     }
 
     private suspend fun updateTileState() {
-        val repository = (application as BudgingApp).container.budgetRepository
+        val repository = (application as BudgingApp).container.dashboardRepository
         val snapshot = repository.getDashboardSnapshot()
         withContext(Dispatchers.Main) {
             qsTile?.apply {

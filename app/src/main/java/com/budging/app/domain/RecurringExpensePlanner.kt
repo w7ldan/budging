@@ -4,11 +4,11 @@ import com.budging.app.data.local.entity.RecurringExpenseTemplateEntity
 import java.time.LocalDate
 import java.time.YearMonth
 
-const val RECURRING_FREQUENCY_EVERY_BUDGET_PERIOD = "EVERY_BUDGET_PERIOD"
-const val RECURRING_FREQUENCY_MONTHLY = "MONTHLY"
+val RECURRING_FREQUENCY_EVERY_BUDGET_PERIOD = RecurringFrequency.EVERY_BUDGET_PERIOD.dbValue
+val RECURRING_FREQUENCY_MONTHLY = RecurringFrequency.MONTHLY.dbValue
 const val RECURRING_APPLY_MODE_CONFIRM = "CONFIRM"
-const val TRANSACTION_SOURCE_MANUAL = "MANUAL"
-const val TRANSACTION_SOURCE_RECURRING = "RECURRING"
+val TRANSACTION_SOURCE_MANUAL = TransactionSourceType.MANUAL.dbValue
+val TRANSACTION_SOURCE_RECURRING = TransactionSourceType.RECURRING.dbValue
 
 data class RecurringOccurrence(
     val templateId: Long,
@@ -26,8 +26,8 @@ object RecurringExpensePlanner {
         val effectiveEnd = template.endDate
         if (effectiveEnd != null && periodStart.isAfter(effectiveEnd)) return emptyList()
 
-        return when (template.frequency) {
-            RECURRING_FREQUENCY_EVERY_BUDGET_PERIOD -> {
+        return when (RecurringFrequency.fromDbValue(template.frequency)) {
+            RecurringFrequency.EVERY_BUDGET_PERIOD -> {
                 listOf(
                     RecurringOccurrence(
                         templateId = template.id,
@@ -36,8 +36,7 @@ object RecurringExpensePlanner {
                 )
             }
 
-            RECURRING_FREQUENCY_MONTHLY -> monthlyOccurrences(template, periodStart, periodEnd, effectiveEnd)
-            else -> emptyList()
+            RecurringFrequency.MONTHLY -> monthlyOccurrences(template, periodStart, periodEnd, effectiveEnd)
         }
     }
 

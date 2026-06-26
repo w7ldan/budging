@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.budging.app.data.model.BudgetCategoryItem
 import com.budging.app.data.model.PendingImpactDetail
@@ -43,6 +44,7 @@ import com.budging.app.ui.component.BudgetScaffoldCard
 import com.budging.app.ui.component.CategoryIconBubble
 import com.budging.app.ui.component.DateInputRow
 import com.budging.app.ui.component.SectionHeader
+import com.budging.app.ui.format.DigitGroupingVisualTransformation
 import com.budging.app.ui.format.formatCurrency
 import com.budging.app.ui.theme.BudgingTheme
 import java.time.LocalDate
@@ -387,6 +389,7 @@ private fun MinimalAmountInput(
                 singleLine = true,
                 textStyle = MaterialTheme.typography.headlineLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                visualTransformation = DigitGroupingVisualTransformation,
                 decorationBox = { inner ->
                     Box(modifier = Modifier.fillMaxWidth()) {
                         if (value.isBlank()) Text("0", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.outline)
@@ -417,6 +420,7 @@ private fun MinimalInputRow(
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                 keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+                visualTransformation = if (keyboardType == KeyboardType.Number) DigitGroupingVisualTransformation else VisualTransformation.None,
                 decorationBox = { inner ->
                     Box(modifier = Modifier.fillMaxWidth()) {
                         if (value.isBlank() && hint.isNotBlank()) Text(hint, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.outline)

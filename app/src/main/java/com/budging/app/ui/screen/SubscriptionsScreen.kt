@@ -27,10 +27,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.budging.app.data.model.RecurringTemplateItem
-import com.budging.app.domain.RECURRING_FREQUENCY_EVERY_BUDGET_PERIOD
-import com.budging.app.domain.RECURRING_FREQUENCY_MONTHLY
+import com.budging.app.domain.AppClock
+import com.budging.app.domain.RecurringFrequency
 import com.budging.app.ui.component.BudgetScaffoldCard
 import com.budging.app.ui.component.BudgetChip
 import com.budging.app.ui.component.CategoryIconBubble
@@ -38,6 +39,7 @@ import com.budging.app.ui.component.DateInputRow
 import com.budging.app.ui.component.IconDropdownField
 import com.budging.app.ui.component.SectionHeader
 import com.budging.app.ui.component.categoryIcon
+import com.budging.app.ui.format.DigitGroupingVisualTransformation
 import com.budging.app.ui.format.formatCurrency
 import com.budging.app.ui.theme.BudgingTheme
 
@@ -69,8 +71,8 @@ fun SubscriptionsScreen(
     var categoryName by rememberSaveable(editingId) { mutableStateOf("") }
     var iconKey by rememberSaveable(editingId) { mutableStateOf("other") }
     var note by rememberSaveable(editingId) { mutableStateOf("") }
-    var frequency by rememberSaveable(editingId) { mutableStateOf(RECURRING_FREQUENCY_MONTHLY) }
-    var startDateText by rememberSaveable(editingId) { mutableStateOf(java.time.LocalDate.now().toString()) }
+    var frequency by rememberSaveable(editingId) { mutableStateOf(RecurringFrequency.MONTHLY.dbValue) }
+    var startDateText by rememberSaveable(editingId) { mutableStateOf(AppClock.System.today().toString()) }
     var endDateText by rememberSaveable(editingId) { mutableStateOf("") }
     var dayOfMonthText by rememberSaveable(editingId) { mutableStateOf("15") }
     var isActive by rememberSaveable(editingId) { mutableStateOf(true) }
@@ -83,8 +85,8 @@ fun SubscriptionsScreen(
         categoryName = template?.categoryNameSnapshot.orEmpty()
         iconKey = template?.iconKey ?: "other"
         note = template?.note.orEmpty()
-        frequency = template?.frequency ?: RECURRING_FREQUENCY_MONTHLY
-        startDateText = template?.startDate?.toString() ?: java.time.LocalDate.now().toString()
+        frequency = template?.frequency ?: RecurringFrequency.MONTHLY.dbValue
+        startDateText = template?.startDate?.toString() ?: AppClock.System.today().toString()
         endDateText = template?.endDate?.toString().orEmpty()
         dayOfMonthText = template?.dayOfMonth?.toString() ?: "15"
         isActive = template?.isActive ?: true
@@ -111,19 +113,19 @@ fun SubscriptionsScreen(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
                     BudgetChip(
-                        selected = frequency == RECURRING_FREQUENCY_EVERY_BUDGET_PERIOD,
+                        selected = frequency == RecurringFrequency.EVERY_BUDGET_PERIOD.dbValue,
                         label = "Every budget period",
                         icon = categoryIcon("other"),
-                        onClick = { frequency = RECURRING_FREQUENCY_EVERY_BUDGET_PERIOD },
+                        onClick = { frequency = RecurringFrequency.EVERY_BUDGET_PERIOD.dbValue },
                     )
                     BudgetChip(
-                        selected = frequency == RECURRING_FREQUENCY_MONTHLY,
+                        selected = frequency == RecurringFrequency.MONTHLY.dbValue,
                         label = "Monthly",
                         icon = categoryIcon("calendar"),
-                        onClick = { frequency = RECURRING_FREQUENCY_MONTHLY },
+                        onClick = { frequency = RecurringFrequency.MONTHLY.dbValue },
                     )
                 }
-                if (frequency == RECURRING_FREQUENCY_MONTHLY) {
+                if (frequency == RecurringFrequency.MONTHLY.dbValue) {
                     MinimalInputRow("Monthly Day", dayOfMonthText, modifier = Modifier.fillMaxWidth(), keyboardType = KeyboardType.Number) {
                         dayOfMonthText = it.filter(Char::isDigit).take(2)
                     }
@@ -187,7 +189,7 @@ fun SubscriptionsScreen(
                             Column {
                                 Text(template.title, style = MaterialTheme.typography.titleMedium)
                                 Text(
-                                    "${template.categoryNameSnapshot} · ${if (template.frequency == RECURRING_FREQUENCY_MONTHLY) "Monthly" else "Every budget period"}",
+                                    "${template.categoryNameSnapshot} · ${if (template.frequency == RecurringFrequency.MONTHLY.dbValue) "Monthly" else "Every budget period"}",
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
@@ -243,6 +245,7 @@ private fun MinimalInputRow(
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                 keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+                visualTransformation = if (keyboardType == KeyboardType.Number) DigitGroupingVisualTransformation else VisualTransformation.None,
                 decorationBox = { inner ->
                     Box(modifier = Modifier.fillMaxWidth()) {
                         if (value.isBlank() && hint.isNotBlank()) {

@@ -1,6 +1,8 @@
 package com.budging.app.ui
 
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -308,18 +310,18 @@ fun BudgingRoot(
                     try {
                         LocalDate.parse(budgetSetupState.endDateText).plusDays(1).toString()
                     } catch (_: Exception) {
-                        LocalDate.now().plusDays(1).toString()
+                        viewModel.clock.today().plusDays(1).toString()
                     }
-                } ?: LocalDate.now().plusDays(1).toString()
+                } ?: viewModel.clock.today().plusDays(1).toString()
                 val defaultEndDate = activePeriod?.let {
                     try {
                         val start = LocalDate.parse(budgetSetupState.startDateText)
                         val end = LocalDate.parse(budgetSetupState.endDateText)
                         LocalDate.parse(defaultStartDate).plusDays(end.toEpochDay() - start.toEpochDay()).toString()
                     } catch (_: Exception) {
-                        LocalDate.now().plusWeeks(4).toString()
+                        viewModel.clock.today().plusWeeks(4).toString()
                     }
-                } ?: LocalDate.now().plusWeeks(4).toString()
+                } ?: viewModel.clock.today().plusWeeks(4).toString()
 
                 CreateNextPeriodScreen(
                     defaultName = activePeriod?.let { "${it.name} (Next)" } ?: "New Budget",
@@ -382,13 +384,7 @@ private fun slideIn(scope: AnimatedContentTransitionScope<NavBackStackEntry>) =
     }
 
 private fun slideOut(scope: AnimatedContentTransitionScope<NavBackStackEntry>) =
-    with(scope) {
-        slideOutOfContainer(
-            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-            animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
-            targetOffset = { -it / 5 },
-        )
-    }
+    ExitTransition.None
 
 private fun slidePopIn(scope: AnimatedContentTransitionScope<NavBackStackEntry>) =
     with(scope) {
@@ -400,10 +396,4 @@ private fun slidePopIn(scope: AnimatedContentTransitionScope<NavBackStackEntry>)
     }
 
 private fun slidePopOut(scope: AnimatedContentTransitionScope<NavBackStackEntry>) =
-    with(scope) {
-        slideOutOfContainer(
-            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-            animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
-            targetOffset = { it / 5 },
-        )
-    }
+    ExitTransition.None

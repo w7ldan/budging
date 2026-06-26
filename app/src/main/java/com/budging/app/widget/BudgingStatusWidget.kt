@@ -60,7 +60,7 @@ class BudgingStatusWidget : GlanceAppWidget() {
     override val sizeMode: SizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val repository = (context.applicationContext as BudgingApp).container.budgetRepository
+        val repository = (context.applicationContext as BudgingApp).container.dashboardRepository
         val snapshot = repository.getDashboardSnapshot()
         provideContent {
             WidgetContent(

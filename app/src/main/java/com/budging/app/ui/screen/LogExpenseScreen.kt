@@ -46,8 +46,8 @@ import com.budging.app.ui.component.Keypad
 import com.budging.app.ui.component.SectionHeader
 import com.budging.app.ui.component.categoryIcon
 import com.budging.app.ui.format.formatCurrency
+import com.budging.app.domain.AppClock
 import com.budging.app.ui.theme.BudgingTheme
-import java.time.LocalDate
 
 @Composable
 fun LogExpenseScreen(
@@ -60,7 +60,7 @@ fun LogExpenseScreen(
     var selectedCategoryId by rememberSaveable(state.budgetName, state.categories.firstOrNull()?.id) {
         mutableStateOf<Long?>(state.categories.firstOrNull()?.id)
     }
-    var dateText by rememberSaveable(state.budgetName) { mutableStateOf(LocalDate.now().toString()) }
+    var dateText by rememberSaveable(state.budgetName) { mutableStateOf(AppClock.System.today().toString()) }
     var noteText by rememberSaveable { mutableStateOf("") }
     var splitPeriodCount by rememberSaveable { mutableStateOf(1) }
 

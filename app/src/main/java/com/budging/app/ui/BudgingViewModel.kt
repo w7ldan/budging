@@ -18,13 +18,17 @@ import com.budging.app.data.model.RecurringPreviewItem
 import com.budging.app.data.model.RecurringTemplateDraft
 import com.budging.app.data.model.RecurringTemplateItem
 import com.budging.app.data.model.TransactionDetailState
-import com.budging.app.data.repo.BudgetRepository
-import com.budging.app.domain.RECURRING_FREQUENCY_EVERY_BUDGET_PERIOD
+import com.budging.app.data.repo.BudgetPeriodRepository
+import com.budging.app.data.repo.CategoryRepository
+import com.budging.app.data.repo.DashboardRepository
+import com.budging.app.data.repo.ExpenseRepository
+import com.budging.app.data.repo.PendingImpactService
+import com.budging.app.data.repo.RecurringRepository
+import com.budging.app.data.repo.TransactionRepository
+import com.budging.app.domain.AppClock
+import com.budging.app.domain.RecurringFrequency
 import com.budging.app.domain.SplitExpensePlanner
 import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
-import java.time.ZoneId
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -36,46 +40,53 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class BudgingViewModel(
-    private val budgetRepository: BudgetRepository,
+    private val dashboardRepo: DashboardRepository,
+    private val budgetPeriodRepo: BudgetPeriodRepository,
+    private val categoryRepo: CategoryRepository,
+    private val expenseRepo: ExpenseRepository,
+    private val transactionRepo: TransactionRepository,
+    private val recurringRepo: RecurringRepository,
+    private val pendingImpactService: PendingImpactService,
     private val backupRepository: BackupRepository,
+    val clock: AppClock,
 ) : ViewModel() {
-    val dashboardState: StateFlow<DashboardState> = budgetRepository.observeDashboard()
+    val dashboardState: StateFlow<DashboardState> = dashboardRepo.observeDashboard()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardState.Empty)
 
-    val budgetSetupState: StateFlow<BudgetSetupState> = budgetRepository.observeBudgetSetup()
+    val budgetSetupState: StateFlow<BudgetSetupState> = dashboardRepo.observeBudgetSetup()
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
-            BudgetSetupState(startDateText = LocalDate.now().toString(), endDateText = LocalDate.now().toString()),
+            BudgetSetupState(startDateText = clock.today().toString(), endDateText = clock.today().toString()),
         )
 
-    val expenseEntryState: StateFlow<ExpenseEntryState> = budgetRepository.observeExpenseEntry()
+    val expenseEntryState: StateFlow<ExpenseEntryState> = dashboardRepo.observeExpenseEntry()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExpenseEntryState.Empty)
 
     private val selectedCategoryId = MutableStateFlow<Long?>(null)
     val categoryDetailState: StateFlow<CategoryDetailState?> = selectedCategoryId
-        .flatMapLatest { categoryId -> if (categoryId == null) flowOf(null) else budgetRepository.observeCategoryDetail(categoryId) }
+        .flatMapLatest { categoryId -> if (categoryId == null) flowOf(null) else dashboardRepo.observeCategoryDetail(categoryId) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val selectedTransactionId = MutableStateFlow<Long?>(null)
     val transactionDetailState: StateFlow<TransactionDetailState?> = selectedTransactionId
-        .flatMapLatest { id -> if (id == null) flowOf(null) else flowOf(budgetRepository.getTransactionDetail(id)) }
+        .flatMapLatest { id -> if (id == null) flowOf(null) else flowOf(transactionRepo.getTransactionDetail(id)) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val transactionHistoryState: StateFlow<List<TransactionHistoryRow>> =
-        budgetRepository.observeAllTransactions()
+        transactionRepo.observeAllTransactions()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val periodListState: StateFlow<List<PeriodSummary>> =
-        budgetRepository.observeAllPeriods()
+        budgetPeriodRepo.observeAllPeriods()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val pendingImpactsState: StateFlow<List<PendingImpactDetail>> =
-        budgetRepository.observePendingImpacts()
+        pendingImpactService.observePendingImpacts()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val recurringTemplatesState: StateFlow<List<RecurringTemplateItem>> =
-        budgetRepository.observeRecurringTemplates()
+        recurringRepo.observeRecurringTemplates()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _message = MutableStateFlow<String?>(null)
@@ -103,7 +114,7 @@ class BudgingViewModel(
     fun saveBudgetPeriod(name: String, totalAmountMinor: Long, currencyCode: String, startDateText: String, endDateText: String) {
         viewModelScope.launch {
             runCatching {
-                budgetRepository.saveActiveBudgetPeriod(
+                budgetPeriodRepo.saveActiveBudgetPeriod(
                     name = name,
                     totalAmountMinor = totalAmountMinor,
                     currencyCode = currencyCode,
@@ -125,7 +136,7 @@ class BudgingViewModel(
     fun saveCategory(categoryId: Long?, name: String, allocatedAmountMinor: Long, iconKey: String) {
         viewModelScope.launch {
             runCatching {
-                budgetRepository.saveCategory(categoryId, name, allocatedAmountMinor, iconKey)
+                categoryRepo.saveCategory(categoryId, name, allocatedAmountMinor, iconKey)
             }.onSuccess {
                 _message.value = if (categoryId == null) "Category added." else "Category updated."
             }.onFailure {
@@ -150,7 +161,7 @@ class BudgingViewModel(
     ) {
         viewModelScope.launch {
             runCatching {
-                budgetRepository.saveRecurringTemplate(
+                recurringRepo.saveRecurringTemplate(
                     RecurringTemplateDraft(
                         templateId = templateId,
                         title = title,
@@ -162,7 +173,7 @@ class BudgingViewModel(
                         frequency = frequency,
                         startDate = LocalDate.parse(startDateText),
                         endDate = endDateText.ifBlank { null }?.let(LocalDate::parse),
-                        dayOfMonth = if (frequency == RECURRING_FREQUENCY_EVERY_BUDGET_PERIOD) null else dayOfMonth,
+                        dayOfMonth = if (frequency == RecurringFrequency.EVERY_BUDGET_PERIOD.dbValue) null else dayOfMonth,
                         isActive = isActive,
                     ),
                 )
@@ -176,7 +187,7 @@ class BudgingViewModel(
 
     fun deleteRecurringTemplate(templateId: Long) {
         viewModelScope.launch {
-            runCatching { budgetRepository.deleteRecurringTemplate(templateId) }
+            runCatching { recurringRepo.deleteRecurringTemplate(templateId) }
                 .onSuccess { _message.value = "Subscription deleted." }
                 .onFailure { _message.value = it.message ?: "Could not delete subscription." }
         }
@@ -184,7 +195,7 @@ class BudgingViewModel(
 
     fun setCategoryArchived(categoryId: Long, isArchived: Boolean) {
         viewModelScope.launch {
-            budgetRepository.setCategoryArchived(categoryId, isArchived)
+            categoryRepo.setCategoryArchived(categoryId, isArchived)
             _message.value = if (isArchived) "Category archived." else "Category restored."
         }
     }
@@ -192,7 +203,7 @@ class BudgingViewModel(
     fun topUpBudget(amountMinor: Long) {
         viewModelScope.launch {
             runCatching {
-                budgetRepository.topUpActiveBudget(amountMinor)
+                budgetPeriodRepo.topUpActiveBudget(amountMinor)
             }.onSuccess {
                 _message.value = "Budget topped up."
             }.onFailure {
@@ -203,7 +214,7 @@ class BudgingViewModel(
 
     fun deleteCategory(categoryId: Long) {
         viewModelScope.launch {
-            runCatching { budgetRepository.deleteCategory(categoryId) }
+            runCatching { categoryRepo.deleteCategory(categoryId) }
                 .onSuccess { _message.value = "Category deleted." }
                 .onFailure { _message.value = it.message ?: "Could not delete category." }
         }
@@ -211,7 +222,7 @@ class BudgingViewModel(
 
     fun deleteBudgetPeriod(periodId: Long, wasActive: Boolean) {
         viewModelScope.launch {
-            runCatching { budgetRepository.deleteBudgetPeriod(periodId) }
+            runCatching { budgetPeriodRepo.deleteBudgetPeriod(periodId) }
                 .onSuccess { _message.value = if (wasActive) "Budget cancelled." else "Budget deleted." }
                 .onFailure { _message.value = it.message ?: "Could not delete budget." }
         }
@@ -220,7 +231,7 @@ class BudgingViewModel(
     fun logNormalExpense(amountMinor: Long, categoryId: Long, note: String, dateText: String) {
         viewModelScope.launch {
             runCatching {
-                budgetRepository.logNormalExpense(amountMinor, categoryId, note, toEpochMillis(dateText))
+                expenseRepo.logNormalExpense(amountMinor, categoryId, note, toEpochMillis(dateText))
             }.onSuccess {
                 _message.value = "Expense logged."
             }.onFailure {
@@ -232,7 +243,7 @@ class BudgingViewModel(
     fun logSplitExpense(amountMinor: Long, categoryId: Long, note: String, dateText: String, periodCount: Int) {
         viewModelScope.launch {
             runCatching {
-                budgetRepository.logSplitExpense(amountMinor, categoryId, note, toEpochMillis(dateText), periodCount)
+                expenseRepo.logSplitExpense(amountMinor, categoryId, note, toEpochMillis(dateText), periodCount)
             }.onSuccess {
                 _message.value = "Split expense logged."
             }.onFailure {
@@ -252,7 +263,7 @@ class BudgingViewModel(
         endDateText: String,
         targetCategories: List<BudgetCategoryItem>,
         currencyCode: String,
-    ): List<RecurringPreviewItem> = budgetRepository.previewRecurringForPeriod(
+    ): List<RecurringPreviewItem> = recurringRepo.previewRecurringForPeriod(
         startDate = LocalDate.parse(startDateText),
         endDate = LocalDate.parse(endDateText),
         targetCategories = targetCategories,
@@ -261,7 +272,7 @@ class BudgingViewModel(
 
     fun deleteTransaction(transactionId: Long) {
         viewModelScope.launch {
-            budgetRepository.deleteTransaction(transactionId)
+            transactionRepo.deleteTransaction(transactionId)
             _message.value = "Transaction deleted."
         }
     }
@@ -269,7 +280,7 @@ class BudgingViewModel(
     fun editNormalExpense(transactionId: Long, amountMinor: Long, categoryId: Long, note: String, dateText: String) {
         viewModelScope.launch {
             runCatching {
-                budgetRepository.editNormalExpense(transactionId, amountMinor, categoryId, note, toEpochMillis(dateText))
+                transactionRepo.editNormalExpense(transactionId, amountMinor, categoryId, note, toEpochMillis(dateText))
             }.onSuccess {
                 _message.value = "Expense updated."
                 selectedTransactionId.value = null
@@ -282,7 +293,7 @@ class BudgingViewModel(
     fun editTransactionNote(transactionId: Long, note: String, dateText: String) {
         viewModelScope.launch {
             runCatching {
-                budgetRepository.editTransactionNote(transactionId, note, toEpochMillis(dateText))
+                transactionRepo.editTransactionNote(transactionId, note, toEpochMillis(dateText))
             }.onSuccess {
                 _message.value = "Expense updated."
                 selectedTransactionId.value = null
@@ -306,7 +317,7 @@ class BudgingViewModel(
     ) {
         viewModelScope.launch {
             runCatching {
-                budgetRepository.createNextPeriod(
+                budgetPeriodRepo.createNextPeriod(
                     name = name,
                     totalAmountMinor = totalAmountMinor,
                     currencyCode = currencyCode,
@@ -328,7 +339,7 @@ class BudgingViewModel(
 
     fun applyPendingImpact(impactId: Long, budgetPeriodId: Long, categoryId: Long) {
         viewModelScope.launch {
-            runCatching { budgetRepository.manuallyApplyPendingImpact(impactId, budgetPeriodId, categoryId) }
+            runCatching { pendingImpactService.manuallyApplyPendingImpact(impactId, budgetPeriodId, categoryId) }
                 .onSuccess { _message.value = "Pending impact applied." }
                 .onFailure { _message.value = it.message ?: "Could not apply impact." }
         }
@@ -336,7 +347,7 @@ class BudgingViewModel(
 
     fun deletePendingImpact(impactId: Long) {
         viewModelScope.launch {
-            runCatching { budgetRepository.deletePendingImpact(impactId) }
+            runCatching { pendingImpactService.deletePendingImpact(impactId) }
                 .onSuccess { _message.value = "Pending impact deleted." }
                 .onFailure { _message.value = it.message ?: "Could not delete impact." }
         }
@@ -368,11 +379,7 @@ class BudgingViewModel(
 
     private fun toEpochMillis(dateText: String): Long {
         val date = LocalDate.parse(dateText)
-        return if (date == LocalDate.now()) {
-            System.currentTimeMillis()
-        } else {
-            LocalDateTime.of(date, LocalTime.NOON).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        }
+        return clock.toEpochMillis(date)
     }
 }
 
@@ -382,13 +389,23 @@ sealed class BackupMessage {
 }
 
 class BudgingViewModelFactory(
-    private val budgetRepository: BudgetRepository,
+    private val dashboardRepo: DashboardRepository,
+    private val budgetPeriodRepo: BudgetPeriodRepository,
+    private val categoryRepo: CategoryRepository,
+    private val expenseRepo: ExpenseRepository,
+    private val transactionRepo: TransactionRepository,
+    private val recurringRepo: RecurringRepository,
+    private val pendingImpactService: PendingImpactService,
     private val backupRepository: BackupRepository,
+    private val clock: AppClock,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(BudgingViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return BudgingViewModel(budgetRepository, backupRepository) as T
+            return BudgingViewModel(
+                dashboardRepo, budgetPeriodRepo, categoryRepo, expenseRepo,
+                transactionRepo, recurringRepo, pendingImpactService, backupRepository, clock,
+            ) as T
         }
         error("Unknown ViewModel class: ${modelClass.name}")
     }
