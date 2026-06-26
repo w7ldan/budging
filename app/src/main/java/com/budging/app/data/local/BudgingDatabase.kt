@@ -90,6 +90,20 @@ abstract class BudgingDatabase : RoomDatabase() {
         val migration4To5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE budget_periods ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
+                // ponytail: keep only the latest period active after migration;
+                // if a user had multiple periods before v5, DEFAULT 1 would make all active.
+                db.execSQL(
+                    """
+                    UPDATE budget_periods SET is_active = 0
+                    WHERE is_active = 1
+                      AND id != (
+                          SELECT id FROM budget_periods
+                          WHERE is_active = 1
+                          ORDER BY start_date_epoch DESC, updated_at_epoch_millis DESC
+                          LIMIT 1
+                      )
+                    """.trimIndent(),
+                )
             }
         }
     }

@@ -56,6 +56,23 @@ interface BudgetPeriodDao {
     @Query("UPDATE budget_periods SET is_active = :isActive WHERE id = :periodId")
     suspend fun setActive(periodId: Long, isActive: Boolean)
 
+    @Query(
+        """
+        UPDATE budget_periods SET is_active = 0
+        WHERE is_active = 1
+          AND id != (
+              SELECT id FROM budget_periods
+              WHERE is_active = 1
+              ORDER BY start_date_epoch DESC, updated_at_epoch_millis DESC
+              LIMIT 1
+          )
+        """,
+    )
+    suspend fun enforceSingleActive()
+
+    @Query("SELECT COUNT(*) FROM budget_periods WHERE is_active = 1")
+    suspend fun countActive(): Int
+
     @Query("DELETE FROM budget_periods")
     suspend fun deleteAll()
 }

@@ -332,6 +332,7 @@ fun BudgingRoot(
                     previousCategories = previousCategories,
                     pendingImpacts = pendingImpactsState,
                     activePeriodCurrency = activePeriod?.currencyCode ?: "IDR",
+                    onDeletePendingImpact = { impactId -> viewModel.deletePendingImpact(impactId) },
                     onSave = { name: String, totalAmountMinor: Long, currencyCode: String, startDateText: String, endDateText: String, copyCategoryIds: List<Long>, applyImpactIds: List<Long>, impactCategoryMapping: Map<Long, Long> ->
                         viewModel.createNextPeriod(
                             name, totalAmountMinor, currencyCode,

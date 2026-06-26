@@ -78,6 +78,7 @@ interface BudgetImpactDao {
             category_id = :categoryId,
             status = 'APPLIED'
         WHERE id = :impactId
+          AND status = 'PENDING'
         """,
     )
     suspend fun applyPendingImpact(impactId: Long, budgetPeriodId: Long, categoryId: Long)

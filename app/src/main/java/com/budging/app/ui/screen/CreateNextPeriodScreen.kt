@@ -1,5 +1,6 @@
 package com.budging.app.ui.screen
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -46,6 +48,7 @@ fun CreateNextPeriodScreen(
     previousCategories: List<BudgetCategoryItem>,
     pendingImpacts: List<PendingImpactDetail>,
     activePeriodCurrency: String,
+    onDeletePendingImpact: (Long) -> Unit = {},
     onSave: (
         name: String,
         totalAmountMinor: Long,
@@ -71,8 +74,19 @@ fun CreateNextPeriodScreen(
     val impactApplySelection = remember { mutableStateMapOf<Long, Boolean>() }
     val impactCategoryMapping = remember { mutableStateMapOf<Long, Long>() }
 
+    // Delete confirmation
+    var deleteConfirmImpactId by remember { mutableStateOf<Long?>(null) }
+
     val currency = currencyCode.ifBlank { activePeriodCurrency }.ifBlank { "IDR" }
     val totalForPreview = totalAmountText.toLongOrNull() ?: 0L
+
+    // Compute which category names are being copied — used for match-status recalculation
+    val copiedCategoryNames = remember(copySelection, previousCategories) {
+        previousCategories
+            .filter { copySelection[it.id] == true }
+            .map { it.name.lowercase() }
+            .toSet()
+    }
 
     LazyColumn(
         modifier = Modifier.padding(horizontal = spacing.xl),
@@ -144,8 +158,24 @@ fun CreateNextPeriodScreen(
         if (pendingImpacts.isNotEmpty()) {
             item { SectionHeader(title = "Pending Impacts (${pendingImpacts.size})") }
             items(pendingImpacts) { impact ->
-                val applySelected = impactApplySelection[impact.impactId] ?: (impact.matchStatus == PendingMatchStatus.MATCHED)
+                // Recompute match against selected copy categories
+                val matchingCopiedCategories = previousCategories
+                    .filter { copySelection[it.id] == true }
+                    .filter { it.name.equals(impact.categoryNameSnapshot, ignoreCase = true) }
+                val effectiveMatch = when {
+                    copiedCategoryNames.isEmpty() -> impact.matchStatus // no copies selected — show original
+                    matchingCopiedCategories.isEmpty() -> PendingMatchStatus.NO_MATCH
+                    matchingCopiedCategories.size == 1 -> PendingMatchStatus.MATCHED
+                    else -> PendingMatchStatus.AMBIGUOUS
+                }
+                val effectiveMatchingName = if (matchingCopiedCategories.size == 1) matchingCopiedCategories.first().name
+                    else impact.matchingCategoryName
+
+                val applySelected = impactApplySelection[impact.impactId] ?: (effectiveMatch == PendingMatchStatus.MATCHED)
                 val mappedCategoryId = impactCategoryMapping[impact.impactId]
+
+                // Build list of copy categories for the mapping dropdown
+                val copyTargetCategories = previousCategories.filter { copySelection[it.id] == true }
 
                 BudgetScaffoldCard {
                     Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
@@ -161,31 +191,51 @@ fun CreateNextPeriodScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
-                            when (impact.matchStatus) {
-                                PendingMatchStatus.MATCHED -> "Auto-matched to \"${impact.matchingCategoryName}\""
-                                PendingMatchStatus.NO_MATCH -> "No matching category"
+                            when (effectiveMatch) {
+                                PendingMatchStatus.MATCHED -> {
+                                    val name = effectiveMatchingName ?: impact.categoryNameSnapshot
+                                    "Auto-matched — will apply to \"$name\""
+                                }
+                                PendingMatchStatus.NO_MATCH -> "No matching category in new period"
                                 PendingMatchStatus.AMBIGUOUS -> "Multiple matching categories"
                             },
                             style = MaterialTheme.typography.labelMedium,
-                            color = when (impact.matchStatus) {
+                            color = when (effectiveMatch) {
                                 PendingMatchStatus.MATCHED -> MaterialTheme.colorScheme.primary
-                                PendingMatchStatus.NO_MATCH -> MaterialTheme.colorScheme.error
-                                PendingMatchStatus.AMBIGUOUS -> MaterialTheme.colorScheme.error
+                                else -> MaterialTheme.colorScheme.error
                             },
                         )
+
+                        // Manual category picker for unmatched/ambiguous when apply is selected
+                        if (effectiveMatch != PendingMatchStatus.MATCHED && applySelected && copyTargetCategories.isNotEmpty()) {
+                            CategoryPicker(
+                                categories = copyTargetCategories,
+                                selectedCategoryId = mappedCategoryId,
+                                currency = currency,
+                                onSelect = { catId -> impactCategoryMapping[impact.impactId] = catId },
+                            )
+                        }
+
+                        if (effectiveMatch != PendingMatchStatus.MATCHED && applySelected && copyTargetCategories.isEmpty()) {
+                            Text(
+                                "Select at least one category to copy above to enable mapping.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+
                         Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
                             TextButton(onClick = {
                                 impactApplySelection[impact.impactId] = !applySelected
+                                if (!applySelected && effectiveMatch != PendingMatchStatus.MATCHED) {
+                                    impactCategoryMapping.remove(impact.impactId)
+                                }
                             }) {
                                 Text(if (applySelected) "Skip" else "Apply")
                             }
-                            if (impact.matchStatus != PendingMatchStatus.MATCHED && applySelected) {
-                                // Show category mapping for unmatched
-                                Text(
-                                    "Needs manual mapping — select from new period's categories after save",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                            // Delete button with confirmation
+                            TextButton(onClick = { deleteConfirmImpactId = impact.impactId }) {
+                                Text("Delete", color = MaterialTheme.colorScheme.error)
                             }
                         }
                     }
@@ -216,6 +266,81 @@ fun CreateNextPeriodScreen(
                 ),
             ) {
                 Text("Create Next Period", style = MaterialTheme.typography.labelLarge)
+            }
+        }
+    }
+
+    // Delete confirmation dialog
+    deleteConfirmImpactId?.let { impactId ->
+        val impact = pendingImpacts.find { it.impactId == impactId }
+        AlertDialog(
+            onDismissRequest = { deleteConfirmImpactId = null },
+            title = { Text("Delete pending impact?") },
+            text = {
+                Text(
+                    impact?.let { "${it.transactionTitle} — ${formatCurrency(it.amountMinor, currency)}" }
+                        ?: "This action cannot be undone."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeletePendingImpact(impactId)
+                    deleteConfirmImpactId = null
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteConfirmImpactId = null }) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun CategoryPicker(
+    categories: List<BudgetCategoryItem>,
+    selectedCategoryId: Long?,
+    currency: String,
+    onSelect: (Long) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(BudgingTheme.spacing.xs)) {
+        Text(
+            "Map to category:",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        categories.forEach { category ->
+            val isSelected = selectedCategoryId == category.id
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onSelect(category.id) },
+                shape = RoundedCornerShape(10.dp),
+                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surfaceVariant,
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp,
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        category.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                            else MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        formatCurrency(category.allocatedAmountMinor, currency),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }

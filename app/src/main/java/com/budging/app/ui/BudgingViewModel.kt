@@ -389,14 +389,14 @@ class BudgingViewModel(
         }
     }
 
-    fun skipPendingImpact(impactId: Long) {
+    fun deletePendingImpact(impactId: Long) {
         viewModelScope.launch {
             runCatching {
-                budgetRepository.skipPendingImpact(impactId)
+                budgetRepository.deletePendingImpact(impactId)
             }.onSuccess {
-                _message.value = "Pending impact skipped."
+                _message.value = "Pending impact deleted."
             }.onFailure {
-                _message.value = it.message ?: "Could not skip impact."
+                _message.value = it.message ?: "Could not delete impact."
             }
         }
     }

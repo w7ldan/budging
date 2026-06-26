@@ -64,6 +64,9 @@ class BackupRepository(
                 categories.forEach { categoryDao.upsert(it) }
                 transactionDao.insertAll(transactions)
                 impactDao.insertAll(impacts)
+
+                // ponytail: imported data may have multiple active periods
+                periodDao.enforceSingleActive()
             }
 
             QuickAccessUpdater.refresh(appContext)

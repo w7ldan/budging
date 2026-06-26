@@ -222,6 +222,7 @@ class BudgetRepository(
             if (active != null) {
                 budgetPeriodDao.setActive(active.id, false)
             }
+            budgetPeriodDao.enforceSingleActive()
             val period = BudgetPeriodEntity(
                 name = name.trim(),
                 startDate = startDate,
@@ -540,6 +541,7 @@ class BudgetRepository(
     private suspend fun applyPendingImpactsForPeriod(
         periodId: Long,
         manualMapping: Map<Long, Long> = emptyMap(),
+        selectedImpactIds: Set<Long> = emptySet(),
     ): PendingApplicationResult {
         val period = budgetPeriodDao.getById(periodId) ?: return PendingApplicationResult()
         val pendingImpacts = budgetImpactDao.getPendingImpacts()
@@ -547,6 +549,11 @@ class BudgetRepository(
         var unresolvedCount = 0
 
         pendingImpacts.forEach { impact ->
+            // Only process selected impacts (if any are specified)
+            if (selectedImpactIds.isNotEmpty() && impact.id !in selectedImpactIds) {
+                return@forEach
+            }
+
             // Check manual mapping first
             val manualCategoryId = manualMapping[impact.id]
             if (manualCategoryId != null) {
@@ -685,6 +692,7 @@ class BudgetRepository(
             if (activePeriod != null) {
                 budgetPeriodDao.setActive(activePeriod.id, false)
             }
+            budgetPeriodDao.enforceSingleActive()
 
             val newId = budgetPeriodDao.upsert(
                 BudgetPeriodEntity(
@@ -715,10 +723,13 @@ class BudgetRepository(
             newId
         }
 
-        // Apply pending impacts — auto-match and manual-mapped
-        applyPendingImpactsForPeriod(newPeriodId, impactCategoryMapping)
+        applyPendingImpactsForPeriod(newPeriodId, impactCategoryMapping, applyImpactIds.toSet())
         notifyPendingImpactsChanged()
         refreshQuickAccess()
+    }
+
+    suspend fun enforceSingleActivePeriod() {
+        budgetPeriodDao.enforceSingleActive()
     }
 
     suspend fun manuallyApplyPendingImpact(
@@ -731,7 +742,7 @@ class BudgetRepository(
         refreshQuickAccess()
     }
 
-    suspend fun skipPendingImpact(impactId: Long) {
+    suspend fun deletePendingImpact(impactId: Long) {
         budgetImpactDao.deleteById(impactId)
         notifyPendingImpactsChanged()
         refreshQuickAccess()
