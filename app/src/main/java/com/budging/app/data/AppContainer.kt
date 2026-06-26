@@ -1,0 +1,21 @@
+package com.budging.app.data
+
+import android.content.Context
+import androidx.room.Room
+import com.budging.app.data.local.BudgingDatabase
+import com.budging.app.data.repo.BudgetRepository
+
+class AppContainer(context: Context) {
+    private val database = Room.databaseBuilder(
+        context,
+        BudgingDatabase::class.java,
+        BudgingDatabase.NAME,
+    ).addCallback(BudgingDatabase.seedCallback()).build()
+
+    val budgetRepository = BudgetRepository(
+        budgetPeriodDao = database.budgetPeriodDao(),
+        budgetCategoryDao = database.budgetCategoryDao(),
+        transactionDao = database.transactionDao(),
+        budgetImpactDao = database.budgetImpactDao(),
+    )
+}
