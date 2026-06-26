@@ -40,6 +40,17 @@ interface BudgetCategoryDao {
     @Query("SELECT COALESCE(SUM(allocated_amount_minor), 0) FROM budget_categories WHERE budget_period_id = :budgetPeriodId AND is_archived = 0")
     suspend fun getAllocatedSumForActive(budgetPeriodId: Long): Long
 
+    @Query(
+        """
+        SELECT * FROM budget_categories
+        WHERE budget_period_id = :budgetPeriodId
+          AND is_archived = 0
+          AND LOWER(name) = LOWER(:name)
+        ORDER BY id
+        """,
+    )
+    suspend fun getActiveByName(budgetPeriodId: Long, name: String): List<BudgetCategoryEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(category: BudgetCategoryEntity): Long
 

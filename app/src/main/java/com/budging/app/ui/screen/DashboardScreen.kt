@@ -156,14 +156,22 @@ fun DashboardScreen(
                             CategoryIconBubble(categoryName = transaction.title, modifier = Modifier.size(40.dp))
                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(transaction.title, style = MaterialTheme.typography.titleMedium)
-                                Text(transaction.note ?: transaction.paidDateLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                if (transaction.note != null) {
+                                Text(
+                                    if (transaction.splitCount > 1) {
+                                        "Paid ${formatCurrency(transaction.paidAmountMinor, state.currencyCode)} · This period ${formatCurrency(transaction.impactAmountMinor, state.currencyCode)} · Split ${transaction.splitCount} periods"
+                                    } else {
+                                        transaction.note ?: transaction.paidDateLabel
+                                    },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                if (transaction.note != null || transaction.splitCount > 1) {
                                     Text(transaction.paidDateLabel, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         }
                         Text(
-                            formatCurrency(transaction.amountMinor, state.currencyCode),
+                            formatCurrency(transaction.impactAmountMinor, state.currencyCode),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                         )

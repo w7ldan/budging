@@ -7,5 +7,6 @@ data class CategoryDetailState(
     val allocatedAmountMinor: Long,
     val spentAmountMinor: Long,
     val remainingAmountMinor: Long,
+    val pendingImpactCount: Int,
     val transactions: List<RecentTransaction>,
 )

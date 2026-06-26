@@ -22,7 +22,7 @@ import java.time.LocalDate
         TransactionEntity::class,
         BudgetImpactEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(RoomTypeConverters::class)
@@ -76,6 +76,14 @@ abstract class BudgingDatabase : RoomDatabase() {
                     """.trimIndent(),
                 )
                 db.execSQL("DELETE FROM budget_periods WHERE name = 'Main Budget'")
+            }
+        }
+
+        val migration3To4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE budget_impacts ADD COLUMN source_budget_period_id INTEGER")
+                db.execSQL("ALTER TABLE budget_impacts ADD COLUMN category_name_snapshot TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE budget_impacts ADD COLUMN planned_period_offset INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

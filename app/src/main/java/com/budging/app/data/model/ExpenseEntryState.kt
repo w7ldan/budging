@@ -5,6 +5,7 @@ data class ExpenseEntryState(
     val currencyCode: String,
     val budgetName: String,
     val dateRangeLabel: String,
+    val pendingImpactCount: Int,
     val categories: List<ExpenseCategoryOption>,
 ) {
     companion object {
@@ -13,6 +14,7 @@ data class ExpenseEntryState(
             currencyCode = "IDR",
             budgetName = "",
             dateRangeLabel = "",
+            pendingImpactCount = 0,
             categories = emptyList(),
         )
     }

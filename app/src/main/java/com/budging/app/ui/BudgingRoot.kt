@@ -153,13 +153,24 @@ fun BudgingRoot(viewModel: BudgingViewModel) {
             composable(Screen.LogExpense.route) {
                 LogExpenseScreen(
                     state = expenseEntryState,
-                    onSaveExpense = { amountMinor, categoryId, dateText, note ->
-                        viewModel.logExpense(
-                            amountMinor = amountMinor,
-                            categoryId = categoryId,
-                            note = note,
-                            dateText = dateText,
-                        )
+                    previewCurrentImpact = viewModel::previewCurrentImpact,
+                    onSaveExpense = { amountMinor, categoryId, dateText, note, splitPeriodCount ->
+                        if (splitPeriodCount <= 1) {
+                            viewModel.logNormalExpense(
+                                amountMinor = amountMinor,
+                                categoryId = categoryId,
+                                note = note,
+                                dateText = dateText,
+                            )
+                        } else {
+                            viewModel.logSplitExpense(
+                                amountMinor = amountMinor,
+                                categoryId = categoryId,
+                                note = note,
+                                dateText = dateText,
+                                periodCount = splitPeriodCount,
+                            )
+                        }
                     },
                 )
             }

@@ -75,6 +75,9 @@ fun CategoryDetailScreen(
                 )
                 BudgetMetricRow("Allocated", formatCurrency(state.allocatedAmountMinor, state.currencyCode))
                 BudgetMetricRow("Spent", formatCurrency(state.spentAmountMinor, state.currencyCode))
+                if (state.pendingImpactCount > 0) {
+                    BudgetMetricRow("Pending future impacts", state.pendingImpactCount.toString())
+                }
             }
         }
         item { SectionHeader(title = "Recent Transactions") }
@@ -97,14 +100,21 @@ fun CategoryDetailScreen(
                             CategoryIconBubble(transaction.title)
                             Column {
                                 Text(transaction.title, style = MaterialTheme.typography.titleMedium)
-                                Text(transaction.note ?: transaction.paidDateLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                if (transaction.note != null) {
+                                Text(
+                                    if (transaction.splitCount > 1) {
+                                        "Paid ${formatCurrency(transaction.paidAmountMinor, state.currencyCode)} · This period ${formatCurrency(transaction.impactAmountMinor, state.currencyCode)} · Split ${transaction.splitCount} periods"
+                                    } else {
+                                        transaction.note ?: transaction.paidDateLabel
+                                    },
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                if (transaction.note != null || transaction.splitCount > 1) {
                                     Text(transaction.paidDateLabel, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         }
                         Text(
-                            formatCurrency(transaction.amountMinor, state.currencyCode),
+                            formatCurrency(transaction.impactAmountMinor, state.currencyCode),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                         )

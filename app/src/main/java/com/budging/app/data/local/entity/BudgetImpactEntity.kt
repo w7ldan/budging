@@ -36,8 +36,11 @@ data class BudgetImpactEntity(
     @ColumnInfo(name = "transaction_id") val transactionId: Long,
     @ColumnInfo(name = "budget_period_id") val budgetPeriodId: Long?,
     @ColumnInfo(name = "category_id") val categoryId: Long?,
+    @ColumnInfo(name = "source_budget_period_id") val sourceBudgetPeriodId: Long? = null,
+    @ColumnInfo(name = "category_name_snapshot") val categoryNameSnapshot: String = "",
     @ColumnInfo(name = "amount_minor") val amountMinor: Long,
     @ColumnInfo(name = "impact_date_epoch") val impactDate: LocalDate,
+    @ColumnInfo(name = "planned_period_offset") val plannedPeriodOffset: Int = 0,
     @ColumnInfo(name = "pending_period_start_epoch") val pendingPeriodStartDate: LocalDate? = null,
     val status: String,
 )

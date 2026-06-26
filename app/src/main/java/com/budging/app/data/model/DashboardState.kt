@@ -46,7 +46,9 @@ data class DashboardCategory(
 data class RecentTransaction(
     val id: Long,
     val title: String,
-    val amountMinor: Long,
+    val paidAmountMinor: Long,
+    val impactAmountMinor: Long,
+    val splitCount: Int,
     val paidDateLabel: String,
     val note: String?,
 )

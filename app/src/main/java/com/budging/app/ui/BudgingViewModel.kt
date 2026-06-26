@@ -8,6 +8,7 @@ import com.budging.app.data.model.CategoryDetailState
 import com.budging.app.data.model.DashboardState
 import com.budging.app.data.model.ExpenseEntryState
 import com.budging.app.data.repo.BudgetRepository
+import com.budging.app.domain.SplitExpensePlanner
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -93,8 +94,20 @@ class BudgingViewModel(
                     startDate = startDate,
                     endDate = endDate,
                 )
-            }.onSuccess {
-                _message.value = "Budget period saved."
+            }.onSuccess { pendingResult ->
+                _message.value = buildString {
+                    append("Budget period saved.")
+                    if (pendingResult.appliedCount > 0) {
+                        append(" Applied ${pendingResult.appliedCount} pending impact")
+                        if (pendingResult.appliedCount > 1) append("s")
+                        append(".")
+                    }
+                    if (pendingResult.unresolvedCount > 0) {
+                        append(" ${pendingResult.unresolvedCount} pending impact")
+                        if (pendingResult.unresolvedCount > 1) append("s")
+                        append(" still need a matching future category.")
+                    }
+                }
             }.onFailure {
                 _message.value = it.message ?: "Could not save budget period."
             }
@@ -136,7 +149,7 @@ class BudgingViewModel(
         }
     }
 
-    fun logExpense(
+    fun logNormalExpense(
         amountMinor: Long,
         categoryId: Long,
         note: String,
@@ -153,7 +166,7 @@ class BudgingViewModel(
                         .toInstant()
                         .toEpochMilli()
                 }
-                budgetRepository.logExpense(
+                budgetRepository.logNormalExpense(
                     amountMinor = amountMinor,
                     categoryId = categoryId,
                     note = note,
@@ -165,6 +178,48 @@ class BudgingViewModel(
                 _message.value = it.message ?: "Could not log expense."
             }
         }
+    }
+
+    fun logSplitExpense(
+        amountMinor: Long,
+        categoryId: Long,
+        note: String,
+        dateText: String,
+        periodCount: Int,
+    ) {
+        viewModelScope.launch {
+            runCatching {
+                val date = LocalDate.parse(dateText)
+                val paidAt = if (date == LocalDate.now()) {
+                    System.currentTimeMillis()
+                } else {
+                    LocalDateTime.of(date, LocalTime.NOON)
+                        .atZone(ZoneId.systemDefault())
+                        .toInstant()
+                        .toEpochMilli()
+                }
+                budgetRepository.logSplitExpense(
+                    amountMinor = amountMinor,
+                    categoryId = categoryId,
+                    note = note,
+                    paidAtEpochMillis = paidAt,
+                    periodCount = periodCount,
+                )
+            }.onSuccess {
+                _message.value = "Split expense logged."
+            }.onFailure {
+                _message.value = it.message ?: "Could not log split expense."
+            }
+        }
+    }
+
+    fun previewCurrentImpact(amountMinor: Long, splitPeriodCount: Int): Long {
+        if (amountMinor <= 0) return 0
+        val safeCount = splitPeriodCount.coerceIn(
+            SplitExpensePlanner.MIN_SPLIT_PERIODS,
+            SplitExpensePlanner.MAX_SPLIT_PERIODS,
+        )
+        return SplitExpensePlanner.splitAmounts(amountMinor, safeCount).first()
     }
 
     fun deleteTransaction(transactionId: Long) {
