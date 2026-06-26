@@ -93,6 +93,9 @@ interface TransactionDao {
     @Query("DELETE FROM transactions WHERE id = :transactionId")
     suspend fun deleteById(transactionId: Long)
 
+    @Query("DELETE FROM transactions WHERE id IN (:transactionIds)")
+    suspend fun deleteByIds(transactionIds: List<Long>)
+
     @Query("SELECT * FROM transactions ORDER BY id")
     suspend fun getAll(): List<TransactionEntity>
 

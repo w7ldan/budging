@@ -194,6 +194,7 @@ fun BudgingRoot(
                             onSaveCategory = viewModel::saveCategory,
                             onArchiveCategory = viewModel::setCategoryArchived,
                             onDeleteCategory = viewModel::deleteCategory,
+                            onDeleteBudget = viewModel::deleteBudgetPeriod,
                         )
                         Screen.LogExpense -> LogExpenseScreen(
                             state = expenseEntryState,
@@ -283,7 +284,11 @@ fun BudgingRoot(
                 )
             }
             composable(Screen.BudgetPeriodList.route) {
-                BudgetPeriodListScreen(periods = periodListState, onCreateNext = { navController.navigate(Screen.CreateNextPeriod.route) })
+                BudgetPeriodListScreen(
+                    periods = periodListState,
+                    onCreateNext = { navController.navigate(Screen.CreateNextPeriod.route) },
+                    onDeletePeriod = viewModel::deleteBudgetPeriod,
+                )
             }
             composable(Screen.CreateNextPeriod.route) {
                 val activePeriod = periodListState.firstOrNull { it.isActive }

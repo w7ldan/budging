@@ -53,6 +53,16 @@ interface BudgetImpactDao {
     @Query("SELECT * FROM budget_impacts WHERE transaction_id = :transactionId")
     suspend fun getByTransactionId(transactionId: Long): List<BudgetImpactEntity>
 
+    @Query(
+        """
+        SELECT DISTINCT transaction_id
+        FROM budget_impacts
+        WHERE budget_period_id = :periodId
+           OR source_budget_period_id = :periodId
+        """,
+    )
+    suspend fun getTransactionIdsForPeriod(periodId: Long): List<Long>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(impact: BudgetImpactEntity): Long
 
@@ -91,6 +101,9 @@ interface BudgetImpactDao {
 
     @Query("DELETE FROM budget_impacts WHERE id = :impactId")
     suspend fun deleteById(impactId: Long)
+
+    @Query("DELETE FROM budget_impacts WHERE transaction_id IN (:transactionIds)")
+    suspend fun deleteByTransactionIds(transactionIds: List<Long>)
 
     @Query("DELETE FROM budget_impacts")
     suspend fun deleteAll()

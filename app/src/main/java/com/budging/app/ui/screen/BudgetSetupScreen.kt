@@ -47,6 +47,7 @@ fun BudgetSetupScreen(
     onSaveCategory: (categoryId: Long?, name: String, allocatedAmountMinor: Long, iconKey: String) -> Unit,
     onArchiveCategory: (categoryId: Long, isArchived: Boolean) -> Unit,
     onDeleteCategory: (categoryId: Long) -> Unit,
+    onDeleteBudget: (periodId: Long, wasActive: Boolean) -> Unit,
 ) {
     val spacing = BudgingTheme.spacing
     var budgetName by rememberSaveable(state.activePeriodId) { mutableStateOf(state.periodName) }
@@ -61,6 +62,7 @@ fun BudgetSetupScreen(
     var editCategoryName by rememberSaveable(state.activePeriodId, editingCategoryId) { mutableStateOf("") }
     var editCategoryAmountText by rememberSaveable(state.activePeriodId, editingCategoryId) { mutableStateOf("") }
     var editCategoryIconKey by rememberSaveable(state.activePeriodId, editingCategoryId) { mutableStateOf("other") }
+    var showDeleteBudgetConfirm by remember { mutableStateOf(false) }
 
     val totalForPreview = totalAmountText.toLongOrNull() ?: 0L
     val projectedUnallocated = totalForPreview - state.categories
@@ -91,6 +93,18 @@ fun BudgetSetupScreen(
                     editCategoryIconKey.ifBlank { resolveCategoryIconKey(editCategoryName) },
                 )
                 dismissEditDialog()
+            },
+        )
+    }
+    if (showDeleteBudgetConfirm && state.activePeriodId != null) {
+        DeleteBudgetDialog(
+            title = "Cancel current budget?",
+            body = "This deletes the current budget period and its transactions. This cannot be undone.",
+            confirmLabel = "Delete Budget",
+            onDismiss = { showDeleteBudgetConfirm = false },
+            onConfirm = {
+                onDeleteBudget(state.activePeriodId, true)
+                showDeleteBudgetConfirm = false
             },
         )
     }
@@ -135,6 +149,14 @@ fun BudgetSetupScreen(
                     ),
                 ) {
                     Text("Save Setup", style = MaterialTheme.typography.labelLarge)
+                }
+                if (state.activePeriodId != null) {
+                    TextButton(
+                        onClick = { showDeleteBudgetConfirm = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Delete Budget", color = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
         }
@@ -275,6 +297,46 @@ private fun CategoryEditDialog(
                     TextButton(onClick = onDismiss) { Text("Cancel") }
                     Button(onClick = onSave, shape = RoundedCornerShape(14.dp)) {
                         Text("Save")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeleteBudgetDialog(
+    title: String,
+    body: String,
+    confirmLabel: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Text(title, style = MaterialTheme.typography.titleLarge)
+                Text(body, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End),
+                ) {
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    Button(
+                        onClick = onConfirm,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError,
+                        ),
+                    ) {
+                        Text(confirmLabel)
                     }
                 }
             }

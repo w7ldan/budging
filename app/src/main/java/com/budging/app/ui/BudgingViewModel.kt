@@ -197,6 +197,14 @@ class BudgingViewModel(
         }
     }
 
+    fun deleteBudgetPeriod(periodId: Long, wasActive: Boolean) {
+        viewModelScope.launch {
+            runCatching { budgetRepository.deleteBudgetPeriod(periodId) }
+                .onSuccess { _message.value = if (wasActive) "Budget cancelled." else "Budget deleted." }
+                .onFailure { _message.value = it.message ?: "Could not delete budget." }
+        }
+    }
+
     fun logNormalExpense(amountMinor: Long, categoryId: Long, note: String, dateText: String) {
         viewModelScope.launch {
             runCatching {

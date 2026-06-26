@@ -482,6 +482,21 @@ class BudgetRepository(
         refreshQuickAccess()
     }
 
+    suspend fun deleteBudgetPeriod(periodId: Long) {
+        val period = budgetPeriodDao.getById(periodId)
+            ?: throw IllegalArgumentException("Budget period not found.")
+        database.withTransaction {
+            val transactionIds = budgetImpactDao.getTransactionIdsForPeriod(periodId)
+            if (transactionIds.isNotEmpty()) {
+                budgetImpactDao.deleteByTransactionIds(transactionIds)
+                transactionDao.deleteByIds(transactionIds)
+            }
+            budgetPeriodDao.deleteById(period.id)
+        }
+        notifyPendingImpactsChanged()
+        refreshQuickAccess()
+    }
+
     fun observeAllTransactions(): Flow<List<TransactionHistoryRow>> = transactionDao.observeAll()
 
     suspend fun getTransactionDetail(transactionId: Long): TransactionDetailState? {

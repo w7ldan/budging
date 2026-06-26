@@ -96,7 +96,7 @@ private fun WidgetContent(
         verticalAlignment = Alignment.Vertical.CenterVertically,
     ) {
         Column(
-            modifier = GlanceModifier.defaultWeight().fillMaxHeight(),
+            modifier = GlanceModifier.defaultWeight(),
             verticalAlignment = Alignment.Vertical.Top,
             horizontalAlignment = Alignment.Horizontal.Start,
         ) {
@@ -119,7 +119,7 @@ private fun WidgetContent(
                     ),
                     maxLines = 2,
                 )
-                Spacer(GlanceModifier.defaultWeight())
+                Spacer(GlanceModifier.height(12.dp))
                 ProgressLabels(
                     left = "${progress.spentPercent}% spent",
                     right = "${progress.leftPercent}% left",
@@ -143,7 +143,7 @@ private fun WidgetContent(
                         fontSize = 13.sp,
                     ),
                 )
-                Spacer(GlanceModifier.defaultWeight())
+                Spacer(GlanceModifier.height(12.dp))
                 ProgressLabels(left = "0% spent", right = "0% left")
                 Spacer(GlanceModifier.height(8.dp))
                 ProgressBar(0f, progressWidth)

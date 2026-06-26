@@ -14,7 +14,12 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -31,9 +36,24 @@ import com.budging.app.ui.theme.BudgingTheme
 fun BudgetPeriodListScreen(
     periods: List<PeriodSummary>,
     onCreateNext: () -> Unit,
+    onDeletePeriod: (periodId: Long, wasActive: Boolean) -> Unit,
 ) {
     val spacing = BudgingTheme.spacing
     val activePeriod = periods.firstOrNull { it.isActive }
+    var pendingDeletePeriod by remember { mutableStateOf<PeriodSummary?>(null) }
+
+    pendingDeletePeriod?.let { period ->
+        DeleteBudgetDialog(
+            title = if (period.isActive) "Cancel current budget?" else "Delete budget?",
+            body = "This deletes ${period.name} and its transactions. This cannot be undone.",
+            confirmLabel = "Delete Budget",
+            onDismiss = { pendingDeletePeriod = null },
+            onConfirm = {
+                onDeletePeriod(period.id, period.isActive)
+                pendingDeletePeriod = null
+            },
+        )
+    }
 
     LazyColumn(
         modifier = Modifier.padding(horizontal = spacing.xl),
@@ -46,7 +66,7 @@ fun BudgetPeriodListScreen(
         if (activePeriod != null) {
             item {
                 SectionHeader(eyebrow = "Active", title = activePeriod.name)
-                PeriodCard(activePeriod)
+                PeriodCard(activePeriod, onDelete = { pendingDeletePeriod = activePeriod })
             }
         }
 
@@ -73,14 +93,17 @@ fun BudgetPeriodListScreen(
         if (pastPeriods.isNotEmpty()) {
             item { SectionHeader(title = "Past Periods") }
             items(pastPeriods) { period ->
-                PeriodCard(period)
+                PeriodCard(period, onDelete = { pendingDeletePeriod = period })
             }
         }
     }
 }
 
 @Composable
-private fun PeriodCard(period: PeriodSummary) {
+private fun PeriodCard(
+    period: PeriodSummary,
+    onDelete: () -> Unit,
+) {
     val progressPercent = if (period.totalAmountMinor > 0) {
         ((period.spentAmountMinor * 100) / period.totalAmountMinor).toInt().coerceIn(0, 100)
     } else 0
@@ -121,5 +144,51 @@ private fun PeriodCard(period: PeriodSummary) {
         BudgetMetricRow("Budget", formatCurrency(period.totalAmountMinor, period.currencyCode))
         BudgetMetricRow("Spent", formatCurrency(period.spentAmountMinor, period.currencyCode))
         BudgetMetricRow("Remaining", formatCurrency(period.remainingAmountMinor, period.currencyCode), strong = true)
+        TextButton(
+            onClick = onDelete,
+            modifier = Modifier.align(Alignment.End),
+        ) {
+            Text("Delete", color = MaterialTheme.colorScheme.error)
+        }
+    }
+}
+
+@Composable
+private fun DeleteBudgetDialog(
+    title: String,
+    body: String,
+    confirmLabel: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Text(title, style = MaterialTheme.typography.titleLarge)
+                Text(body, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End),
+                ) {
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    Button(
+                        onClick = onConfirm,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError,
+                        ),
+                    ) {
+                        Text(confirmLabel)
+                    }
+                }
+            }
+        }
     }
 }
