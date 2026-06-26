@@ -33,8 +33,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.budging.app.ui.screen.BudgetSetupScreen
 import com.budging.app.ui.screen.CategoryDetailScreen
 import com.budging.app.ui.screen.DashboardScreen
+import com.budging.app.ui.screen.EditTransactionScreen
 import com.budging.app.ui.screen.LogExpenseScreen
 import com.budging.app.ui.screen.SettingsScreen
+import com.budging.app.ui.screen.TransactionDetailScreen
+import com.budging.app.ui.screen.TransactionHistoryScreen
 import com.budging.app.ui.component.BottomNavItemPill
 import com.budging.app.ui.component.BudgetTopBar
 import com.budging.app.ui.theme.BudgingTheme
@@ -51,6 +54,8 @@ fun BudgingRoot(
     val budgetSetupState by viewModel.budgetSetupState.collectAsStateWithLifecycle()
     val expenseEntryState by viewModel.expenseEntryState.collectAsStateWithLifecycle()
     val categoryDetailState by viewModel.categoryDetailState.collectAsStateWithLifecycle()
+    val transactionDetailState by viewModel.transactionDetailState.collectAsStateWithLifecycle()
+    val transactionHistoryState by viewModel.transactionHistoryState.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val destination = backStackEntry?.destination
@@ -83,9 +88,17 @@ fun BudgingRoot(
                     Screen.LogExpense.route -> "Log Expense"
                     Screen.CategoryDetail.route -> "Category Detail"
                     Screen.Settings.route -> "Overview"
+                    Screen.TransactionHistory.route -> "Transaction History"
+                    Screen.TransactionDetail.route -> "Transaction Detail"
+                    Screen.EditTransaction.route -> "Edit Transaction"
                     else -> "Current Budget"
                 },
-                showBack = destination?.route == Screen.CategoryDetail.route,
+                showBack = destination?.route in listOf(
+                    Screen.CategoryDetail.route,
+                    Screen.TransactionHistory.route,
+                    Screen.TransactionDetail.route,
+                    Screen.EditTransaction.route,
+                ),
                 onBack = {
                     if (navController.previousBackStackEntry != null) {
                         navController.popBackStack()
@@ -148,6 +161,13 @@ fun BudgingRoot(
                         viewModel.loadCategory(categoryId)
                         navController.navigate(Screen.CategoryDetail.route)
                     },
+                    onViewAllTransactions = {
+                        navController.navigate(Screen.TransactionHistory.route)
+                    },
+                    onTransactionClick = { transactionId ->
+                        viewModel.loadTransaction(transactionId)
+                        navController.navigate(Screen.TransactionDetail.createRoute(transactionId))
+                    },
                 )
             }
             composable(Screen.BudgetSetup.route) {
@@ -194,7 +214,10 @@ fun BudgingRoot(
             composable(Screen.CategoryDetail.route) {
                 CategoryDetailScreen(
                     state = categoryDetailState,
-                    onDeleteTransaction = viewModel::deleteTransaction,
+                    onTransactionClick = { transactionId ->
+                        viewModel.loadTransaction(transactionId)
+                        navController.navigate(Screen.TransactionDetail.createRoute(transactionId))
+                    },
                 )
             }
             composable(Screen.Settings.route) {
@@ -204,6 +227,56 @@ fun BudgingRoot(
                     onImportJson = viewModel::importJson,
                     onExportCsv = viewModel::exportCsv,
                     onClearBackupMessage = viewModel::clearBackupMessage,
+                )
+            }
+            composable(Screen.TransactionHistory.route) {
+                TransactionHistoryScreen(
+                    transactions = transactionHistoryState,
+                    currencyCode = dashboardState.currencyCode,
+                    onTransactionClick = { transactionId ->
+                        viewModel.loadTransaction(transactionId)
+                        navController.navigate(Screen.TransactionDetail.createRoute(transactionId))
+                    },
+                )
+            }
+            composable(Screen.TransactionDetail.route) { backStackEntry ->
+                val transactionId = backStackEntry.arguments?.getString("transactionId")?.toLongOrNull()
+                LaunchedEffect(transactionId) {
+                    transactionId?.let { viewModel.loadTransaction(it) }
+                }
+                TransactionDetailScreen(
+                    state = transactionDetailState,
+                    onEdit = {
+                        val id = transactionDetailState?.transactionId ?: return@TransactionDetailScreen
+                        navController.navigate(Screen.EditTransaction.createRoute(id))
+                    },
+                    onDelete = {
+                        val id = transactionDetailState?.transactionId ?: return@TransactionDetailScreen
+                        viewModel.deleteTransaction(id)
+                        navController.popBackStack()
+                    },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(Screen.EditTransaction.route) { backStackEntry ->
+                val transactionId = backStackEntry.arguments?.getString("transactionId")?.toLongOrNull()
+                LaunchedEffect(transactionId) {
+                    transactionId?.let { viewModel.loadTransaction(it) }
+                }
+                EditTransactionScreen(
+                    state = transactionDetailState,
+                    categories = expenseEntryState.categories,
+                    onSaveNormal = { amountMinor, categoryId, note, dateText ->
+                        val id = transactionDetailState?.transactionId ?: return@EditTransactionScreen
+                        viewModel.editNormalExpense(id, amountMinor, categoryId, note, dateText)
+                        navController.popBackStack()
+                    },
+                    onSaveNote = { note, dateText ->
+                        val id = transactionDetailState?.transactionId ?: return@EditTransactionScreen
+                        viewModel.editTransactionNote(id, note, dateText)
+                        navController.popBackStack()
+                    },
+                    onBack = { navController.popBackStack() },
                 )
             }
         }

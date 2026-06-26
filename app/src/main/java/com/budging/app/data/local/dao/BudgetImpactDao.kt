@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import com.budging.app.data.local.entity.BudgetImpactEntity
 import com.budging.app.data.local.query.CategorySpendingRow
 import kotlinx.coroutines.flow.Flow
@@ -49,11 +50,17 @@ interface BudgetImpactDao {
     @Query("SELECT COUNT(*) FROM budget_impacts WHERE category_id = :categoryId")
     suspend fun countForCategory(categoryId: Long): Int
 
+    @Query("SELECT * FROM budget_impacts WHERE transaction_id = :transactionId")
+    suspend fun getByTransactionId(transactionId: Long): List<BudgetImpactEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(impact: BudgetImpactEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(impacts: List<BudgetImpactEntity>)
+
+    @Update
+    suspend fun update(impact: BudgetImpactEntity)
 
     @Query(
         """

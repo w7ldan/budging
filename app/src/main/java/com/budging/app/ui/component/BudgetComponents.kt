@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -205,6 +206,9 @@ fun BottomNavItemPill(
         Screen.LogExpense -> AppWarmSoft
         Screen.Settings -> AppPrimarySoft
         Screen.CategoryDetail -> AppPrimarySoft
+        Screen.TransactionHistory -> AppPrimarySoft
+        Screen.TransactionDetail -> AppPrimarySoft
+        Screen.EditTransaction -> AppPrimarySoft
     }
     Column(
         modifier = Modifier
@@ -237,6 +241,7 @@ fun BudgetTopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .statusBarsPadding()
             .padding(horizontal = BudgingTheme.spacing.xl, vertical = BudgingTheme.spacing.md),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -268,7 +273,7 @@ fun BudgetTopBar(
                 }
             }
             Column {
-                Text("BudgetWise", style = MaterialTheme.typography.headlineMedium)
+                Text("Budging", style = MaterialTheme.typography.headlineMedium)
                 if (showBack) {
                     Text(title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -330,10 +335,65 @@ fun categoryAccent(name: String): CategoryAccent {
     }
 }
 
+@Composable
+fun Keypad(
+    onDigit: (String) -> Unit,
+    onDelete: () -> Unit,
+    onClear: () -> Unit,
+) {
+    val spacing = BudgingTheme.spacing
+    val rows = listOf(
+        listOf("1", "2", "3"),
+        listOf("4", "5", "6"),
+        listOf("7", "8", "9"),
+        listOf("000", "0", "Del"),
+    )
+
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.md)) {
+        rows.forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
+                row.forEach { key ->
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(54.dp)
+                            .clickable {
+                                when (key) {
+                                    "Del" -> onDelete()
+                                    else -> onDigit(key)
+                                }
+                            },
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        tonalElevation = 0.dp,
+                        shadowElevation = 0.dp,
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(key, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+        }
+        Text(
+            "Clear",
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .clickable(onClick = onClear)
+                .padding(horizontal = spacing.md, vertical = spacing.sm),
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.labelLarge,
+        )
+    }
+}
+
 private fun screenIcon(screen: Screen): ImageVector = when (screen) {
     Screen.Dashboard -> Icons.Default.Dashboard
     Screen.BudgetSetup -> Icons.Default.SettingsSuggest
     Screen.LogExpense -> Icons.Default.Add
     Screen.Settings -> Icons.Default.EditNote
     Screen.CategoryDetail -> Icons.Default.EditNote
+    Screen.TransactionHistory -> Icons.Default.EditNote
+    Screen.TransactionDetail -> Icons.Default.EditNote
+    Screen.EditTransaction -> Icons.Default.EditNote
 }

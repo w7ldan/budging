@@ -6,10 +6,12 @@ import androidx.lifecycle.viewModelScope
 import android.net.Uri
 import com.budging.app.data.backup.BackupRepository
 import com.budging.app.data.backup.URIResult
+import com.budging.app.data.local.query.TransactionHistoryRow
 import com.budging.app.data.model.BudgetSetupState
 import com.budging.app.data.model.CategoryDetailState
 import com.budging.app.data.model.DashboardState
 import com.budging.app.data.model.ExpenseEntryState
+import com.budging.app.data.model.TransactionDetailState
 import com.budging.app.data.repo.BudgetRepository
 import com.budging.app.domain.SplitExpensePlanner
 import java.time.LocalDate
@@ -69,11 +71,39 @@ class BudgingViewModel(
             initialValue = null,
         )
 
+    private val selectedTransactionId = MutableStateFlow<Long?>(null)
+    val transactionDetailState: StateFlow<TransactionDetailState?> = selectedTransactionId
+        .flatMapLatest { id ->
+            if (id == null) flowOf(null)
+            else flowOf(budgetRepository.getTransactionDetail(id))
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = null,
+        )
+
+    val transactionHistoryState: StateFlow<List<TransactionHistoryRow>> =
+        budgetRepository.observeAllTransactions()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptyList(),
+            )
+
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message
 
     fun loadCategory(categoryId: Long) {
         selectedCategoryId.value = categoryId
+    }
+
+    fun loadTransaction(transactionId: Long) {
+        selectedTransactionId.value = transactionId
+    }
+
+    fun clearTransactionDetail() {
+        selectedTransactionId.value = null
     }
 
     fun clearMessage() {
@@ -230,6 +260,70 @@ class BudgingViewModel(
         viewModelScope.launch {
             budgetRepository.deleteTransaction(transactionId)
             _message.value = "Transaction deleted."
+        }
+    }
+
+    fun editNormalExpense(
+        transactionId: Long,
+        amountMinor: Long,
+        categoryId: Long,
+        note: String,
+        dateText: String,
+    ) {
+        viewModelScope.launch {
+            runCatching {
+                val date = LocalDate.parse(dateText)
+                val paidAt = if (date == LocalDate.now()) {
+                    System.currentTimeMillis()
+                } else {
+                    LocalDateTime.of(date, LocalTime.NOON)
+                        .atZone(ZoneId.systemDefault())
+                        .toInstant()
+                        .toEpochMilli()
+                }
+                budgetRepository.editNormalExpense(
+                    transactionId = transactionId,
+                    amountMinor = amountMinor,
+                    categoryId = categoryId,
+                    note = note,
+                    paidAtEpochMillis = paidAt,
+                )
+            }.onSuccess {
+                _message.value = "Expense updated."
+                selectedTransactionId.value = null
+            }.onFailure {
+                _message.value = it.message ?: "Could not update expense."
+            }
+        }
+    }
+
+    fun editTransactionNote(
+        transactionId: Long,
+        note: String,
+        dateText: String,
+    ) {
+        viewModelScope.launch {
+            runCatching {
+                val date = LocalDate.parse(dateText)
+                val paidAt = if (date == LocalDate.now()) {
+                    System.currentTimeMillis()
+                } else {
+                    LocalDateTime.of(date, LocalTime.NOON)
+                        .atZone(ZoneId.systemDefault())
+                        .toInstant()
+                        .toEpochMilli()
+                }
+                budgetRepository.editTransactionNote(
+                    transactionId = transactionId,
+                    note = note,
+                    paidAtEpochMillis = paidAt,
+                )
+            }.onSuccess {
+                _message.value = "Expense updated."
+                selectedTransactionId.value = null
+            }.onFailure {
+                _message.value = it.message ?: "Could not update expense."
+            }
         }
     }
 

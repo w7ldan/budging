@@ -9,4 +9,11 @@ sealed class Screen(
     data object LogExpense : Screen("log_expense", "Log")
     data object CategoryDetail : Screen("category_detail", "Category")
     data object Settings : Screen("settings", "Settings")
+    data object TransactionHistory : Screen("transaction_history", "History")
+    data object TransactionDetail : Screen("transaction_detail/{transactionId}", "Detail") {
+        fun createRoute(transactionId: Long) = "transaction_detail/$transactionId"
+    }
+    data object EditTransaction : Screen("edit_transaction/{transactionId}", "Edit") {
+        fun createRoute(transactionId: Long) = "edit_transaction/$transactionId"
+    }
 }

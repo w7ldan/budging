@@ -4,7 +4,9 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import com.budging.app.data.local.entity.TransactionEntity
+import com.budging.app.data.local.query.TransactionHistoryRow
 import com.budging.app.data.local.query.TransactionImpactRow
 import kotlinx.coroutines.flow.Flow
 
@@ -52,8 +54,28 @@ interface TransactionDao {
     )
     fun observeForCategory(categoryId: Long, budgetPeriodId: Long): Flow<List<TransactionImpactRow>>
 
+    @Query(
+        """
+        SELECT
+            t.id, t.title, t.note, t.amount_minor AS amountMinor,
+            t.paid_date_epoch AS paidDate, t.paid_at_epoch_millis AS paidAtEpochMillis,
+            t.category_id AS categoryId, t.split_count AS splitCount,
+            c.name AS categoryName
+        FROM transactions t
+        LEFT JOIN budget_categories c ON c.id = t.category_id
+        ORDER BY t.paid_at_epoch_millis DESC, t.id DESC
+        """,
+    )
+    fun observeAll(): Flow<List<TransactionHistoryRow>>
+
+    @Query("SELECT * FROM transactions WHERE id = :transactionId")
+    suspend fun getById(transactionId: Long): TransactionEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(transaction: TransactionEntity): Long
+
+    @Update
+    suspend fun update(transaction: TransactionEntity)
 
     @Query("DELETE FROM transactions WHERE id = :transactionId")
     suspend fun deleteById(transactionId: Long)

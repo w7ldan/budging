@@ -1,5 +1,6 @@
 package com.budging.app.ui.screen
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,7 +29,7 @@ import com.budging.app.ui.theme.BudgingTheme
 @Composable
 fun CategoryDetailScreen(
     state: CategoryDetailState?,
-    onDeleteTransaction: (Long) -> Unit,
+    onTransactionClick: (Long) -> Unit = {},
 ) {
     val spacing = BudgingTheme.spacing
     if (state == null) {
@@ -90,7 +91,9 @@ fun CategoryDetailScreen(
             }
         } else {
             items(state.transactions) { transaction ->
-                BudgetScaffoldCard {
+                BudgetScaffoldCard(
+                    modifier = Modifier.clickable { onTransactionClick(transaction.id) },
+                ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -118,12 +121,6 @@ fun CategoryDetailScreen(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                         )
-                    }
-                    TextButton(
-                        onClick = { onDeleteTransaction(transaction.id) },
-                        modifier = Modifier.align(Alignment.End),
-                    ) {
-                        Text("Delete")
                     }
                 }
             }

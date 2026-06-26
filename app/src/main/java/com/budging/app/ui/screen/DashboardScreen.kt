@@ -34,6 +34,8 @@ import com.budging.app.ui.theme.BudgingTheme
 fun DashboardScreen(
     state: DashboardState,
     onOpenCategory: (Long) -> Unit,
+    onViewAllTransactions: () -> Unit = {},
+    onTransactionClick: (Long) -> Unit = {},
 ) {
     val spacing = BudgingTheme.spacing
     LazyColumn(
@@ -99,12 +101,20 @@ fun DashboardScreen(
                 }
             }
         }
-        item { SectionHeader(title = "Recent Spending") }
+        item {
+            SectionHeader(
+                title = "Recent Spending",
+                action = "View All",
+                onAction = onViewAllTransactions,
+            )
+        }
         if (state.recentTransactions.isEmpty()) {
             item { EmptyDashboardCard("No expenses yet", "Your latest spending will appear here once you start logging expenses.") }
         } else {
             items(state.recentTransactions) { transaction ->
-                BudgetScaffoldCard {
+                BudgetScaffoldCard(
+                    modifier = Modifier.clickable { onTransactionClick(transaction.id) },
+                ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,

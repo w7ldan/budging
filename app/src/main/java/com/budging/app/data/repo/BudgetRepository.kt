@@ -12,6 +12,7 @@ import com.budging.app.data.local.entity.BudgetImpactEntity
 import com.budging.app.data.local.entity.BudgetPeriodEntity
 import com.budging.app.data.local.entity.TransactionEntity
 import com.budging.app.data.local.query.TransactionImpactRow
+import com.budging.app.data.local.query.TransactionHistoryRow
 import com.budging.app.data.model.BudgetCategoryItem
 import com.budging.app.data.model.BudgetSetupState
 import com.budging.app.data.model.CategoryDetailState
@@ -19,7 +20,9 @@ import com.budging.app.data.model.DashboardCategory
 import com.budging.app.data.model.DashboardState
 import com.budging.app.data.model.ExpenseCategoryOption
 import com.budging.app.data.model.ExpenseEntryState
+import com.budging.app.data.model.ImpactDetail
 import com.budging.app.data.model.RecentTransaction
+import com.budging.app.data.model.TransactionDetailState
 import com.budging.app.domain.BudgetMath
 import com.budging.app.domain.SplitExpensePlanner
 import com.budging.app.quickaccess.QuickAccessUpdater
@@ -402,6 +405,123 @@ class BudgetRepository(
 
     suspend fun deleteTransaction(transactionId: Long) {
         transactionDao.deleteById(transactionId)
+        refreshQuickAccess()
+    }
+
+    fun observeAllTransactions(): Flow<List<TransactionHistoryRow>> =
+        transactionDao.observeAll()
+
+    suspend fun getTransactionDetail(transactionId: Long): TransactionDetailState? {
+        val transaction = transactionDao.getById(transactionId) ?: return null
+        val impacts = budgetImpactDao.getByTransactionId(transactionId)
+        val period = impacts.firstOrNull { it.budgetPeriodId != null }
+            ?.budgetPeriodId
+            ?.let { budgetPeriodDao.getById(it) }
+        val currencyCode = period?.currencyCode ?: "IDR"
+
+        return TransactionDetailState(
+            transactionId = transaction.id,
+            title = transaction.title,
+            note = transaction.note,
+            amountMinor = transaction.amountMinor,
+            paidDateLabel = transaction.paidDate.format(longDateFormatter),
+            paidDateIso = transaction.paidDate.toString(),
+            categoryId = transaction.categoryId,
+            categoryName = impacts.firstOrNull()?.categoryNameSnapshot,
+            splitCount = transaction.splitCount,
+            currencyCode = currencyCode,
+            impacts = impacts.map { impact ->
+                val impactPeriod = impact.budgetPeriodId?.let { budgetPeriodDao.getById(it) }
+                ImpactDetail(
+                    impactId = impact.id,
+                    amountMinor = impact.amountMinor,
+                    categoryName = impact.categoryNameSnapshot,
+                    periodName = impactPeriod?.name,
+                    status = impact.status,
+                    impactDateLabel = impact.impactDate.format(shortDateFormatter),
+                )
+            },
+            isSplit = transaction.splitCount > 1,
+        )
+    }
+
+    suspend fun editNormalExpense(
+        transactionId: Long,
+        amountMinor: Long,
+        categoryId: Long,
+        note: String,
+        paidAtEpochMillis: Long,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ) {
+        require(amountMinor > 0) { "Expense amount must be positive." }
+        val paidDate = Instant.ofEpochMilli(paidAtEpochMillis).atZone(zoneId).toLocalDate()
+        val activePeriod = budgetPeriodDao.getActive(paidDate.toEpochDay())
+            ?: throw IllegalArgumentException("Expense date must be inside the active budget period.")
+        val category = budgetCategoryDao.getById(categoryId)
+            ?: throw IllegalArgumentException("Choose a valid category.")
+        require(!category.isArchived) { "Archived categories cannot receive new expenses." }
+
+        val existing = transactionDao.getById(transactionId)
+            ?: throw IllegalArgumentException("Transaction not found.")
+        require(existing.splitCount <= 1) { "Editing split transaction amounts is not supported. Delete and recreate this split expense." }
+
+        val title = note.trim().ifBlank { category.name }
+        val now = System.currentTimeMillis()
+        database.withTransaction {
+            transactionDao.update(
+                existing.copy(
+                    title = title,
+                    note = note.trim().ifBlank { null },
+                    amountMinor = amountMinor,
+                    paidDate = paidDate,
+                    paidAtEpochMillis = paidAtEpochMillis,
+                    categoryId = categoryId,
+                    updatedAtEpochMillis = now,
+                ),
+            )
+            val impacts = budgetImpactDao.getByTransactionId(transactionId)
+            val appliedImpact = impacts.firstOrNull { it.status == STATUS_APPLIED }
+            if (appliedImpact != null) {
+                budgetImpactDao.update(
+                    appliedImpact.copy(
+                        amountMinor = amountMinor,
+                        categoryId = categoryId,
+                        budgetPeriodId = activePeriod.id,
+                        categoryNameSnapshot = category.name,
+                        impactDate = paidDate,
+                    ),
+                )
+            }
+        }
+        refreshQuickAccess()
+    }
+
+    suspend fun editTransactionNote(
+        transactionId: Long,
+        note: String,
+        paidAtEpochMillis: Long,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ) {
+        val existing = transactionDao.getById(transactionId)
+            ?: throw IllegalArgumentException("Transaction not found.")
+        val paidDate = Instant.ofEpochMilli(paidAtEpochMillis).atZone(zoneId).toLocalDate()
+        val now = System.currentTimeMillis()
+        val title = note.trim().ifBlank { existing.title }
+        database.withTransaction {
+            transactionDao.update(
+                existing.copy(
+                    title = title,
+                    note = note.trim().ifBlank { null },
+                    paidDate = paidDate,
+                    paidAtEpochMillis = paidAtEpochMillis,
+                    updatedAtEpochMillis = now,
+                ),
+            )
+            val impacts = budgetImpactDao.getByTransactionId(transactionId)
+            impacts.forEach { impact ->
+                budgetImpactDao.update(impact.copy(impactDate = paidDate))
+            }
+        }
         refreshQuickAccess()
     }
 
