@@ -15,7 +15,7 @@ interface TransactionDao {
         FROM transactions t
         INNER JOIN budget_impacts bi ON bi.transaction_id = t.id
         WHERE bi.budget_period_id = :budgetPeriodId
-        ORDER BY t.paid_date_epoch DESC, t.id DESC
+        ORDER BY t.paid_at_epoch_millis DESC, t.id DESC
         LIMIT :limit
         """,
     )
@@ -27,11 +27,14 @@ interface TransactionDao {
         FROM transactions t
         INNER JOIN budget_impacts bi ON bi.transaction_id = t.id
         WHERE bi.category_id = :categoryId
-        ORDER BY t.paid_date_epoch DESC, t.id DESC
+        ORDER BY t.paid_at_epoch_millis DESC, t.id DESC
         """,
     )
     fun observeForCategory(categoryId: Long): Flow<List<TransactionEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(transaction: TransactionEntity): Long
+
+    @Query("DELETE FROM transactions WHERE id = :transactionId")
+    suspend fun deleteById(transactionId: Long)
 }

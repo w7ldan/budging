@@ -10,9 +10,10 @@ class AppContainer(context: Context) {
         context,
         BudgingDatabase::class.java,
         BudgingDatabase.NAME,
-    ).addCallback(BudgingDatabase.seedCallback()).build()
+    ).addMigrations(BudgingDatabase.migration1To2).build()
 
     val budgetRepository = BudgetRepository(
+        database = database,
         budgetPeriodDao = database.budgetPeriodDao(),
         budgetCategoryDao = database.budgetCategoryDao(),
         transactionDao = database.transactionDao(),

@@ -24,4 +24,5 @@ data class BudgetCategoryEntity(
     val name: String,
     @ColumnInfo(name = "allocated_amount_minor") val allocatedAmountMinor: Long,
     @ColumnInfo(name = "display_order") val displayOrder: Int = 0,
+    @ColumnInfo(name = "is_archived") val isArchived: Boolean = false,
 )

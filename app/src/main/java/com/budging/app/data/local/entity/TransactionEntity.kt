@@ -16,6 +16,7 @@ data class TransactionEntity(
     val note: String? = null,
     @ColumnInfo(name = "amount_minor") val amountMinor: Long,
     @ColumnInfo(name = "paid_date_epoch") val paidDate: LocalDate,
+    @ColumnInfo(name = "paid_at_epoch_millis") val paidAtEpochMillis: Long,
     @ColumnInfo(name = "category_id") val categoryId: Long?,
     @ColumnInfo(name = "split_count") val splitCount: Int = 1,
     @ColumnInfo(name = "created_at_epoch_millis") val createdAtEpochMillis: Long,

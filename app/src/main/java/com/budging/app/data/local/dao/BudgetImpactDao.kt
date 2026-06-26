@@ -30,6 +30,9 @@ interface BudgetImpactDao {
     @Query("SELECT COALESCE(SUM(amount_minor), 0) FROM budget_impacts WHERE category_id = :categoryId")
     fun observeSpentForCategory(categoryId: Long): Flow<Long>
 
+    @Query("SELECT COUNT(*) FROM budget_impacts WHERE category_id = :categoryId")
+    suspend fun countForCategory(categoryId: Long): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertAll(impacts: List<BudgetImpactEntity>)
+    suspend fun insert(impact: BudgetImpactEntity): Long
 }
