@@ -1,5 +1,7 @@
 package com.budging.app.data.model
 
+import java.time.LocalDate
+
 data class PeriodSummary(
     val id: Long,
     val name: String,
@@ -30,3 +32,47 @@ enum class PendingMatchStatus {
     NO_MATCH,
     AMBIGUOUS,
 }
+
+data class RecurringTemplateItem(
+    val id: Long,
+    val title: String,
+    val amountMinor: Long,
+    val currencyCode: String,
+    val categoryNameSnapshot: String,
+    val iconKey: String?,
+    val note: String?,
+    val frequency: String,
+    val startDate: LocalDate,
+    val endDate: LocalDate?,
+    val dayOfMonth: Int?,
+    val isActive: Boolean,
+)
+
+data class RecurringTemplateDraft(
+    val templateId: Long? = null,
+    val title: String,
+    val amountMinor: Long,
+    val currencyCode: String,
+    val categoryNameSnapshot: String,
+    val iconKey: String?,
+    val note: String?,
+    val frequency: String,
+    val startDate: LocalDate,
+    val endDate: LocalDate?,
+    val dayOfMonth: Int?,
+    val isActive: Boolean,
+)
+
+data class RecurringPreviewItem(
+    val previewKey: String,
+    val templateId: Long,
+    val title: String,
+    val amountMinor: Long,
+    val currencyCode: String,
+    val categoryNameSnapshot: String,
+    val iconKey: String?,
+    val occurrenceDate: LocalDate,
+    val matchStatus: PendingMatchStatus,
+    val matchingCategoryId: Long?,
+    val matchingCategoryName: String?,
+)

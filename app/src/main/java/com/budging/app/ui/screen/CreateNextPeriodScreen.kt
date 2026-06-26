@@ -34,10 +34,15 @@ import androidx.compose.ui.unit.dp
 import com.budging.app.data.model.BudgetCategoryItem
 import com.budging.app.data.model.PendingImpactDetail
 import com.budging.app.data.model.PendingMatchStatus
+import com.budging.app.data.model.RecurringPreviewItem
+import com.budging.app.data.model.RecurringTemplateItem
+import com.budging.app.domain.RecurringExpensePlanner
 import com.budging.app.ui.component.BudgetScaffoldCard
+import com.budging.app.ui.component.CategoryIconBubble
 import com.budging.app.ui.component.SectionHeader
 import com.budging.app.ui.format.formatCurrency
 import com.budging.app.ui.theme.BudgingTheme
+import java.time.LocalDate
 
 @Composable
 fun CreateNextPeriodScreen(
@@ -47,6 +52,7 @@ fun CreateNextPeriodScreen(
     defaultEndDate: String,
     previousCategories: List<BudgetCategoryItem>,
     pendingImpacts: List<PendingImpactDetail>,
+    recurringTemplates: List<RecurringTemplateItem>,
     activePeriodCurrency: String,
     onDeletePendingImpact: (Long) -> Unit = {},
     onSave: (
@@ -58,6 +64,8 @@ fun CreateNextPeriodScreen(
         copyCategoryIds: List<Long>,
         applyImpactIds: List<Long>,
         impactCategoryMapping: Map<Long, Long>,
+        applyRecurringPreviewKeys: List<String>,
+        recurringCategoryMapping: Map<String, Long>,
     ) -> Unit,
 ) {
     val spacing = BudgingTheme.spacing
@@ -67,25 +75,63 @@ fun CreateNextPeriodScreen(
     var startDateText by rememberSaveable { mutableStateOf(defaultStartDate) }
     var endDateText by rememberSaveable { mutableStateOf(defaultEndDate) }
 
-    // Category copy selection
     val copySelection = remember { mutableStateMapOf<Long, Boolean>() }
-
-    // Pending impact resolution
     val impactApplySelection = remember { mutableStateMapOf<Long, Boolean>() }
     val impactCategoryMapping = remember { mutableStateMapOf<Long, Long>() }
-
-    // Delete confirmation
+    val recurringApplySelection = remember { mutableStateMapOf<String, Boolean>() }
+    val recurringCategoryMapping = remember { mutableStateMapOf<String, Long>() }
     var deleteConfirmImpactId by remember { mutableStateOf<Long?>(null) }
 
     val currency = currencyCode.ifBlank { activePeriodCurrency }.ifBlank { "IDR" }
     val totalForPreview = totalAmountText.toLongOrNull() ?: 0L
-
-    // Compute which category names are being copied — used for match-status recalculation
-    val copiedCategoryNames = remember(copySelection, previousCategories) {
-        previousCategories
-            .filter { copySelection[it.id] == true }
-            .map { it.name.lowercase() }
-            .toSet()
+    val copiedCategories = previousCategories.filter { copySelection[it.id] == true }
+    val copiedNames = copiedCategories.map { it.name.lowercase() }.toSet()
+    val recurringPreviewItems = remember(recurringTemplates, copiedCategories, startDateText, endDateText, currency) {
+        val start = runCatching { LocalDate.parse(startDateText) }.getOrNull()
+        val end = runCatching { LocalDate.parse(endDateText) }.getOrNull()
+        if (start == null || end == null || end.isBefore(start)) {
+            emptyList()
+        } else {
+            recurringTemplates.flatMap { template ->
+                val entityLike = com.budging.app.data.local.entity.RecurringExpenseTemplateEntity(
+                    id = template.id,
+                    title = template.title,
+                    amountMinor = template.amountMinor,
+                    currencyCode = template.currencyCode,
+                    categoryNameSnapshot = template.categoryNameSnapshot,
+                    iconKey = template.iconKey,
+                    note = template.note,
+                    frequency = template.frequency,
+                    startDate = template.startDate,
+                    endDate = template.endDate,
+                    dayOfMonth = template.dayOfMonth,
+                    applyMode = "CONFIRM",
+                    isActive = template.isActive,
+                    createdAtEpochMillis = 0,
+                    updatedAtEpochMillis = 0,
+                )
+                RecurringExpensePlanner.occurrencesForPeriod(entityLike, start, end).map { occurrence ->
+                    val matches = copiedCategories.filter { it.name.equals(template.categoryNameSnapshot, ignoreCase = true) }
+                    RecurringPreviewItem(
+                        previewKey = "${template.id}:${occurrence.occurrenceDate}",
+                        templateId = template.id,
+                        title = template.title,
+                        amountMinor = template.amountMinor,
+                        currencyCode = currency,
+                        categoryNameSnapshot = template.categoryNameSnapshot,
+                        iconKey = template.iconKey,
+                        occurrenceDate = occurrence.occurrenceDate,
+                        matchStatus = when {
+                            matches.isEmpty() -> PendingMatchStatus.NO_MATCH
+                            matches.size == 1 -> PendingMatchStatus.MATCHED
+                            else -> PendingMatchStatus.AMBIGUOUS
+                        },
+                        matchingCategoryId = matches.singleOrNull()?.id,
+                        matchingCategoryName = matches.singleOrNull()?.name,
+                    )
+                }
+            }.sortedWith(compareBy({ it.occurrenceDate }, { it.title.lowercase() }))
+        }
     }
 
     LazyColumn(
@@ -94,146 +140,65 @@ fun CreateNextPeriodScreen(
         verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
         item { SectionHeader(title = "Create Next Period") }
-
-        // Period details
         item {
             BudgetScaffoldCard {
                 Text("New budget period details", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                MinimalAmountInput(
-                    currencyCode = currency,
-                    value = totalAmountText,
-                    onValueChange = { totalAmountText = it.filter(Char::isDigit) },
-                )
+                MinimalAmountInput(currency, totalAmountText) { totalAmountText = it.filter(Char::isDigit) }
                 MinimalInputRow("Period Name", budgetName, modifier = Modifier.fillMaxWidth()) { budgetName = it }
                 Row(horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
                     MinimalInputRow("Start Date", startDateText, "YYYY-MM-DD", Modifier.weight(1f)) { startDateText = it }
                     MinimalInputRow("End Date", endDateText, "YYYY-MM-DD", Modifier.weight(1f)) { endDateText = it }
                 }
-                MinimalInputRow("Currency", currencyCode, modifier = Modifier.fillMaxWidth()) {
-                    currencyCode = it.uppercase().take(3)
-                }
-                Text(
-                    "Budget: ${formatCurrency(totalForPreview, currency)}",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                )
+                MinimalInputRow("Currency", currencyCode, modifier = Modifier.fillMaxWidth()) { currencyCode = it.uppercase().take(3) }
+                Text("Budget: ${formatCurrency(totalForPreview, currency)}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             }
         }
 
-        // Copy categories from previous period
         if (previousCategories.isNotEmpty()) {
             item { SectionHeader(title = "Copy Categories") }
             item {
                 BudgetScaffoldCard {
-                    Text(
-                        "Select categories to copy from the previous period:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                     previousCategories.forEach { category ->
                         val selected = copySelection[category.id] ?: false
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column {
-                                Text(category.name, style = MaterialTheme.typography.titleMedium)
-                                Text(
-                                    formatCurrency(category.allocatedAmountMinor, currency),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            TextButton(onClick = { copySelection[category.id] = !selected }) {
-                                Text(if (selected) "Remove" else "Copy")
-                            }
-                        }
+                        SelectableCategoryRow(
+                            category = category,
+                            currency = currency,
+                            selected = selected,
+                            onToggle = { copySelection[category.id] = !selected },
+                        )
                     }
                 }
             }
         }
 
-        // Pending impacts
         if (pendingImpacts.isNotEmpty()) {
             item { SectionHeader(title = "Pending Impacts (${pendingImpacts.size})") }
             items(pendingImpacts) { impact ->
-                // Recompute match against selected copy categories
-                val matchingCopiedCategories = previousCategories
-                    .filter { copySelection[it.id] == true }
-                    .filter { it.name.equals(impact.categoryNameSnapshot, ignoreCase = true) }
+                val matchingCopiedCategories = copiedCategories.filter { it.name.equals(impact.categoryNameSnapshot, ignoreCase = true) }
                 val effectiveMatch = when {
-                    copiedCategoryNames.isEmpty() -> impact.matchStatus // no copies selected — show original
+                    copiedNames.isEmpty() -> impact.matchStatus
                     matchingCopiedCategories.isEmpty() -> PendingMatchStatus.NO_MATCH
                     matchingCopiedCategories.size == 1 -> PendingMatchStatus.MATCHED
                     else -> PendingMatchStatus.AMBIGUOUS
                 }
-                val effectiveMatchingName = if (matchingCopiedCategories.size == 1) matchingCopiedCategories.first().name
-                    else impact.matchingCategoryName
-
                 val applySelected = impactApplySelection[impact.impactId] ?: (effectiveMatch == PendingMatchStatus.MATCHED)
                 val mappedCategoryId = impactCategoryMapping[impact.impactId]
-
-                // Build list of copy categories for the mapping dropdown
-                val copyTargetCategories = previousCategories.filter { copySelection[it.id] == true }
-
                 BudgetScaffoldCard {
                     Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
                         Text(impact.transactionTitle, style = MaterialTheme.typography.titleMedium)
                         Text(
-                            buildString {
-                                append(formatCurrency(impact.amountMinor, currency))
-                                append(" · ${impact.categoryNameSnapshot}")
-                                impact.sourcePeriodName?.let { append(" · from $it") }
-                                append(" · offset ${impact.plannedPeriodOffset}")
-                            },
+                            "${formatCurrency(impact.amountMinor, currency)} · ${impact.categoryNameSnapshot} · offset ${impact.plannedPeriodOffset}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Text(
-                            when (effectiveMatch) {
-                                PendingMatchStatus.MATCHED -> {
-                                    val name = effectiveMatchingName ?: impact.categoryNameSnapshot
-                                    "Auto-matched — will apply to \"$name\""
-                                }
-                                PendingMatchStatus.NO_MATCH -> "No matching category in new period"
-                                PendingMatchStatus.AMBIGUOUS -> "Multiple matching categories"
-                            },
-                            style = MaterialTheme.typography.labelMedium,
-                            color = when (effectiveMatch) {
-                                PendingMatchStatus.MATCHED -> MaterialTheme.colorScheme.primary
-                                else -> MaterialTheme.colorScheme.error
-                            },
-                        )
-
-                        // Manual category picker for unmatched/ambiguous when apply is selected
-                        if (effectiveMatch != PendingMatchStatus.MATCHED && applySelected && copyTargetCategories.isNotEmpty()) {
-                            CategoryPicker(
-                                categories = copyTargetCategories,
-                                selectedCategoryId = mappedCategoryId,
-                                currency = currency,
-                                onSelect = { catId -> impactCategoryMapping[impact.impactId] = catId },
-                            )
+                        MatchStatusLabel(effectiveMatch, matchingCopiedCategories.singleOrNull()?.name ?: impact.matchingCategoryName)
+                        if (effectiveMatch != PendingMatchStatus.MATCHED && applySelected && copiedCategories.isNotEmpty()) {
+                            CategoryPicker(copiedCategories, mappedCategoryId, currency) { impactCategoryMapping[impact.impactId] = it }
                         }
-
-                        if (effectiveMatch != PendingMatchStatus.MATCHED && applySelected && copyTargetCategories.isEmpty()) {
-                            Text(
-                                "Select at least one category to copy above to enable mapping.",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        }
-
                         Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                            TextButton(onClick = {
-                                impactApplySelection[impact.impactId] = !applySelected
-                                if (!applySelected && effectiveMatch != PendingMatchStatus.MATCHED) {
-                                    impactCategoryMapping.remove(impact.impactId)
-                                }
-                            }) {
+                            TextButton(onClick = { impactApplySelection[impact.impactId] = !applySelected }) {
                                 Text(if (applySelected) "Skip" else "Apply")
                             }
-                            // Delete button with confirmation
                             TextButton(onClick = { deleteConfirmImpactId = impact.impactId }) {
                                 Text("Delete", color = MaterialTheme.colorScheme.error)
                             }
@@ -243,7 +208,37 @@ fun CreateNextPeriodScreen(
             }
         }
 
-        // Save button
+        if (recurringPreviewItems.isNotEmpty()) {
+            item { SectionHeader(title = "Recurring Expenses (${recurringPreviewItems.size})") }
+            items(recurringPreviewItems) { recurring ->
+                val applySelected = recurringApplySelection[recurring.previewKey] ?: (recurring.matchStatus == PendingMatchStatus.MATCHED)
+                val mappedCategoryId = recurringCategoryMapping[recurring.previewKey]
+                BudgetScaffoldCard {
+                    Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(spacing.md), verticalAlignment = Alignment.CenterVertically) {
+                            CategoryIconBubble(recurring.categoryNameSnapshot, iconKey = recurring.iconKey)
+                            Column {
+                                Text(recurring.title, style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    "${formatCurrency(recurring.amountMinor, currency)} · ${recurring.occurrenceDate}",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        MatchStatusLabel(recurring.matchStatus, recurring.matchingCategoryName)
+                        if (recurring.matchStatus != PendingMatchStatus.MATCHED && applySelected && copiedCategories.isNotEmpty()) {
+                            CategoryPicker(copiedCategories, mappedCategoryId, currency) { recurringCategoryMapping[recurring.previewKey] = it }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                            TextButton(onClick = { recurringApplySelection[recurring.previewKey] = !applySelected }) {
+                                Text(if (applySelected) "Skip" else "Apply")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         item {
             Button(
                 onClick = {
@@ -253,9 +248,11 @@ fun CreateNextPeriodScreen(
                         currencyCode.ifBlank { "IDR" },
                         startDateText,
                         endDateText,
-                        copySelection.filter { it.value }.keys.toList(),
-                        impactApplySelection.filter { it.value }.keys.toList(),
+                        copySelection.filterValues { it }.keys.toList(),
+                        impactApplySelection.filterValues { it }.keys.toList(),
                         impactCategoryMapping.toMap(),
+                        recurringApplySelection.filterValues { it }.keys.toList(),
+                        recurringCategoryMapping.toMap(),
                     )
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -270,18 +267,12 @@ fun CreateNextPeriodScreen(
         }
     }
 
-    // Delete confirmation dialog
     deleteConfirmImpactId?.let { impactId ->
         val impact = pendingImpacts.find { it.impactId == impactId }
         AlertDialog(
             onDismissRequest = { deleteConfirmImpactId = null },
             title = { Text("Delete pending impact?") },
-            text = {
-                Text(
-                    impact?.let { "${it.transactionTitle} — ${formatCurrency(it.amountMinor, currency)}" }
-                        ?: "This action cannot be undone."
-                )
-            },
+            text = { Text(impact?.let { "${it.transactionTitle} — ${formatCurrency(it.amountMinor, currency)}" } ?: "This action cannot be undone.") },
             confirmButton = {
                 TextButton(onClick = {
                     onDeletePendingImpact(impactId)
@@ -290,12 +281,54 @@ fun CreateNextPeriodScreen(
                     Text("Delete", color = MaterialTheme.colorScheme.error)
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { deleteConfirmImpactId = null }) {
-                    Text("Cancel")
-                }
-            },
+            dismissButton = { TextButton(onClick = { deleteConfirmImpactId = null }) { Text("Cancel") } },
         )
+    }
+}
+
+@Composable
+private fun MatchStatusLabel(
+    status: PendingMatchStatus,
+    matchedName: String?,
+) {
+    val text = when (status) {
+        PendingMatchStatus.MATCHED -> "Auto-matched to \"${matchedName.orEmpty()}\""
+        PendingMatchStatus.NO_MATCH -> "No matching category in new period"
+        PendingMatchStatus.AMBIGUOUS -> "Multiple matching categories"
+    }
+    val color = if (status == PendingMatchStatus.MATCHED) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onErrorContainer
+    val background = if (status == PendingMatchStatus.MATCHED) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.errorContainer
+    Surface(shape = RoundedCornerShape(999.dp), color = background) {
+        Text(text, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium, color = color)
+    }
+}
+
+@Composable
+private fun SelectableCategoryRow(
+    category: BudgetCategoryItem,
+    currency: String,
+    selected: Boolean,
+    onToggle: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle),
+        shape = RoundedCornerShape(14.dp),
+        color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                CategoryIconBubble(category.name, iconKey = category.iconKey)
+                Column {
+                    Text(category.name, style = MaterialTheme.typography.titleMedium)
+                    Text(formatCurrency(category.allocatedAmountMinor, currency), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Text(if (selected) "Copied" else "Copy", color = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.primary)
+        }
     }
 }
 
@@ -307,39 +340,28 @@ private fun CategoryPicker(
     onSelect: (Long) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(BudgingTheme.spacing.xs)) {
-        Text(
-            "Map to category:",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Text("Map to category:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         categories.forEach { category ->
             val isSelected = selectedCategoryId == category.id
             Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onSelect(category.id) },
+                modifier = Modifier.fillMaxWidth().clickable { onSelect(category.id) },
                 shape = RoundedCornerShape(10.dp),
-                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                    else MaterialTheme.colorScheme.surfaceVariant,
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp,
+                color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        category.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
-                            else MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        formatCurrency(category.allocatedAmountMinor, currency),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        CategoryIconBubble(category.name, iconKey = category.iconKey, modifier = Modifier.padding(0.dp))
+                        Text(
+                            category.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    Text(formatCurrency(category.allocatedAmountMinor, currency), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -362,9 +384,7 @@ private fun MinimalAmountInput(
                 textStyle = MaterialTheme.typography.headlineLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 decorationBox = { inner ->
-                    if (value.isBlank()) {
-                        Text("0", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.outline)
-                    }
+                    if (value.isBlank()) Text("0", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.outline)
                     inner()
                 },
             )
@@ -391,9 +411,7 @@ private fun MinimalInputRow(
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                 keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
                 decorationBox = { inner ->
-                    if (value.isBlank() && hint.isNotBlank()) {
-                        Text(hint, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.outline)
-                    }
+                    if (value.isBlank() && hint.isNotBlank()) Text(hint, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.outline)
                     inner()
                 },
             )

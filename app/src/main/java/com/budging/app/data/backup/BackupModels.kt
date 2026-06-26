@@ -3,10 +3,11 @@ package com.budging.app.data.backup
 import com.budging.app.data.local.entity.BudgetCategoryEntity
 import com.budging.app.data.local.entity.BudgetImpactEntity
 import com.budging.app.data.local.entity.BudgetPeriodEntity
+import com.budging.app.data.local.entity.RecurringExpenseTemplateEntity
 import com.budging.app.data.local.entity.TransactionEntity
 import java.time.LocalDate
 
-const val CURRENT_SCHEMA_VERSION = 1
+const val CURRENT_SCHEMA_VERSION = 2
 
 data class BackupJson(
     val schemaVersion: Int,
@@ -16,6 +17,7 @@ data class BackupJson(
     val budgetCategories: List<CategoryJson>,
     val transactions: List<TransactionJson>,
     val budgetImpacts: List<ImpactJson>,
+    val recurringExpenseTemplates: List<RecurringTemplateJson> = emptyList(),
 )
 
 data class PeriodJson(
@@ -34,6 +36,7 @@ data class CategoryJson(
     val id: Long,
     val budgetPeriodId: Long,
     val name: String,
+    val iconKey: String = "other",
     val allocatedAmountMinor: Long,
     val displayOrder: Int,
     val isArchived: Boolean,
@@ -48,6 +51,9 @@ data class TransactionJson(
     val paidAtEpochMillis: Long,
     val categoryId: Long?,
     val splitCount: Int,
+    val sourceType: String = "MANUAL",
+    val recurringTemplateId: Long? = null,
+    val sourceOccurrenceDate: String? = null,
     val createdAtEpochMillis: Long,
     val updatedAtEpochMillis: Long,
 )
@@ -64,6 +70,24 @@ data class ImpactJson(
     val plannedPeriodOffset: Int,
     val pendingPeriodStartDate: String?,
     val status: String,
+)
+
+data class RecurringTemplateJson(
+    val id: Long,
+    val title: String,
+    val amountMinor: Long,
+    val currencyCode: String,
+    val categoryNameSnapshot: String,
+    val iconKey: String? = null,
+    val note: String?,
+    val frequency: String,
+    val startDate: String,
+    val endDate: String?,
+    val dayOfMonth: Int?,
+    val applyMode: String,
+    val isActive: Boolean,
+    val createdAtEpochMillis: Long,
+    val updatedAtEpochMillis: Long,
 )
 
 // --- Entity ↔ JSON mappers ---
@@ -96,6 +120,7 @@ fun BudgetCategoryEntity.toJson() = CategoryJson(
     id = id,
     budgetPeriodId = budgetPeriodId,
     name = name,
+    iconKey = iconKey,
     allocatedAmountMinor = allocatedAmountMinor,
     displayOrder = displayOrder,
     isArchived = isArchived,
@@ -105,6 +130,7 @@ fun CategoryJson.toEntity() = BudgetCategoryEntity(
     id = id,
     budgetPeriodId = budgetPeriodId,
     name = name,
+    iconKey = iconKey,
     allocatedAmountMinor = allocatedAmountMinor,
     displayOrder = displayOrder,
     isArchived = isArchived,
@@ -119,6 +145,9 @@ fun TransactionEntity.toJson() = TransactionJson(
     paidAtEpochMillis = paidAtEpochMillis,
     categoryId = categoryId,
     splitCount = splitCount,
+    sourceType = sourceType,
+    recurringTemplateId = recurringTemplateId,
+    sourceOccurrenceDate = sourceOccurrenceDate?.toString(),
     createdAtEpochMillis = createdAtEpochMillis,
     updatedAtEpochMillis = updatedAtEpochMillis,
 )
@@ -132,6 +161,9 @@ fun TransactionJson.toEntity() = TransactionEntity(
     paidAtEpochMillis = paidAtEpochMillis,
     categoryId = categoryId,
     splitCount = splitCount,
+    sourceType = sourceType,
+    recurringTemplateId = recurringTemplateId,
+    sourceOccurrenceDate = sourceOccurrenceDate?.let(LocalDate::parse),
     createdAtEpochMillis = createdAtEpochMillis,
     updatedAtEpochMillis = updatedAtEpochMillis,
 )
@@ -162,4 +194,40 @@ fun ImpactJson.toEntity() = BudgetImpactEntity(
     plannedPeriodOffset = plannedPeriodOffset,
     pendingPeriodStartDate = pendingPeriodStartDate?.let(LocalDate::parse),
     status = status,
+)
+
+fun RecurringExpenseTemplateEntity.toJson() = RecurringTemplateJson(
+    id = id,
+    title = title,
+    amountMinor = amountMinor,
+    currencyCode = currencyCode,
+    categoryNameSnapshot = categoryNameSnapshot,
+    iconKey = iconKey,
+    note = note,
+    frequency = frequency,
+    startDate = startDate.toString(),
+    endDate = endDate?.toString(),
+    dayOfMonth = dayOfMonth,
+    applyMode = applyMode,
+    isActive = isActive,
+    createdAtEpochMillis = createdAtEpochMillis,
+    updatedAtEpochMillis = updatedAtEpochMillis,
+)
+
+fun RecurringTemplateJson.toEntity() = RecurringExpenseTemplateEntity(
+    id = id,
+    title = title,
+    amountMinor = amountMinor,
+    currencyCode = currencyCode,
+    categoryNameSnapshot = categoryNameSnapshot,
+    iconKey = iconKey,
+    note = note,
+    frequency = frequency,
+    startDate = LocalDate.parse(startDate),
+    endDate = endDate?.let(LocalDate::parse),
+    dayOfMonth = dayOfMonth,
+    applyMode = applyMode,
+    isActive = isActive,
+    createdAtEpochMillis = createdAtEpochMillis,
+    updatedAtEpochMillis = updatedAtEpochMillis,
 )

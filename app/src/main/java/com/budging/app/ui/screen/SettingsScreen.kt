@@ -46,6 +46,7 @@ fun SettingsScreen(
     onExportCsv: (Uri) -> Unit,
     onClearBackupMessage: () -> Unit,
     onOpenPeriodList: () -> Unit = {},
+    onOpenSubscriptions: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -116,6 +117,12 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("View All Budget Periods")
+            }
+            OutlinedButton(
+                onClick = onOpenSubscriptions,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Manage Subscriptions")
             }
         }
 

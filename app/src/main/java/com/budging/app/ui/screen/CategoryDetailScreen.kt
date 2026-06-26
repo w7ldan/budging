@@ -57,7 +57,7 @@ fun CategoryDetailScreen(
                     verticalAlignment = Alignment.Top,
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(spacing.md), verticalAlignment = Alignment.CenterVertically) {
-                        CategoryIconBubble(state.categoryName)
+                        CategoryIconBubble(state.categoryName, iconKey = state.iconKey)
                         Column {
                             Text(state.categoryName, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimary)
                             Text("Remaining for this budget period", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.78f))
@@ -100,7 +100,7 @@ fun CategoryDetailScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Row(horizontalArrangement = Arrangement.spacedBy(spacing.md), verticalAlignment = Alignment.CenterVertically) {
-                            CategoryIconBubble(transaction.title)
+                            CategoryIconBubble(transaction.title, iconKey = transaction.categoryIconKey)
                             Column {
                                 Text(transaction.title, style = MaterialTheme.typography.titleMedium)
                                 Text(

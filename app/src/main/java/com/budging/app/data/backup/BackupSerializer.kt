@@ -2,7 +2,6 @@ package com.budging.app.data.backup
 
 import org.json.JSONArray
 import org.json.JSONObject
-import java.time.Instant
 
 data class ValidationResult(
     val isValid: Boolean,
@@ -18,6 +17,7 @@ object BackupSerializer {
         put("budgetCategories", categoriesToJson(backup.budgetCategories))
         put("transactions", transactionsToJson(backup.transactions))
         put("budgetImpacts", impactsToJson(backup.budgetImpacts))
+        put("recurringExpenseTemplates", recurringTemplatesToJson(backup.recurringExpenseTemplates))
     }.toString(2)
 
     fun deserialize(json: String): BackupJson {
@@ -30,6 +30,7 @@ object BackupSerializer {
             budgetCategories = parseCategories(root.getJSONArray("budgetCategories")),
             transactions = parseTransactions(root.getJSONArray("transactions")),
             budgetImpacts = parseImpacts(root.getJSONArray("budgetImpacts")),
+            recurringExpenseTemplates = parseRecurringTemplates(root.optJSONArray("recurringExpenseTemplates") ?: JSONArray()),
         )
     }
 
@@ -43,12 +44,11 @@ object BackupSerializer {
 
         if (backup.exportedAt.isBlank()) errors.add("exportedAt is required")
 
-        // Collect valid IDs for reference checking
         val periodIds = backup.budgetPeriods.map { it.id }.toSet()
         val categoryIds = backup.budgetCategories.map { it.id }.toSet()
         val transactionIds = backup.transactions.map { it.id }.toSet()
+        val recurringTemplateIds = backup.recurringExpenseTemplates.map { it.id }.toSet()
 
-        // Validate periods
         backup.budgetPeriods.forEach { p ->
             if (p.id == 0L) errors.add("BudgetPeriod id must be non-zero")
             if (p.name.isBlank()) errors.add("BudgetPeriod ${p.id}: name is required")
@@ -56,7 +56,6 @@ object BackupSerializer {
             if (p.currencyCode.isBlank()) errors.add("BudgetPeriod ${p.id}: currencyCode is required")
         }
 
-        // Validate categories
         backup.budgetCategories.forEach { c ->
             if (c.id == 0L) errors.add("BudgetCategory id must be non-zero")
             if (c.name.isBlank()) errors.add("BudgetCategory ${c.id}: name is required")
@@ -65,14 +64,15 @@ object BackupSerializer {
             }
         }
 
-        // Validate transactions
         backup.transactions.forEach { t ->
             if (t.id == 0L) errors.add("Transaction id must be non-zero")
             if (t.title.isBlank()) errors.add("Transaction ${t.id}: title is required")
             if (t.paidDate.isBlank()) errors.add("Transaction ${t.id}: paidDate is required")
+            if (t.recurringTemplateId != null && t.recurringTemplateId !in recurringTemplateIds) {
+                errors.add("Transaction ${t.id}: references missing recurring template ${t.recurringTemplateId}")
+            }
         }
 
-        // Validate impacts
         backup.budgetImpacts.forEach { i ->
             if (i.transactionId !in transactionIds) {
                 errors.add("BudgetImpact ${i.id}: references missing transaction ${i.transactionId}")
@@ -88,10 +88,16 @@ object BackupSerializer {
             }
         }
 
+        backup.recurringExpenseTemplates.forEach { t ->
+            if (t.id == 0L) errors.add("RecurringTemplate id must be non-zero")
+            if (t.title.isBlank()) errors.add("RecurringTemplate ${t.id}: title is required")
+            if (t.categoryNameSnapshot.isBlank()) {
+                errors.add("RecurringTemplate ${t.id}: categoryNameSnapshot is required")
+            }
+        }
+
         return ValidationResult(errors.isEmpty(), errors)
     }
-
-    // --- Private helpers ---
 
     private fun periodsToJson(list: List<PeriodJson>) = JSONArray().apply {
         list.forEach { p ->
@@ -102,6 +108,7 @@ object BackupSerializer {
                 put("endDate", p.endDate)
                 put("totalAmountMinor", p.totalAmountMinor)
                 put("currencyCode", p.currencyCode)
+                put("isActive", p.isActive)
                 put("createdAtEpochMillis", p.createdAtEpochMillis)
                 put("updatedAtEpochMillis", p.updatedAtEpochMillis)
             })
@@ -114,6 +121,7 @@ object BackupSerializer {
                 put("id", c.id)
                 put("budgetPeriodId", c.budgetPeriodId)
                 put("name", c.name)
+                put("iconKey", c.iconKey)
                 put("allocatedAmountMinor", c.allocatedAmountMinor)
                 put("displayOrder", c.displayOrder)
                 put("isArchived", c.isArchived)
@@ -132,6 +140,9 @@ object BackupSerializer {
                 put("paidAtEpochMillis", t.paidAtEpochMillis)
                 put("categoryId", t.categoryId ?: JSONObject.NULL)
                 put("splitCount", t.splitCount)
+                put("sourceType", t.sourceType)
+                put("recurringTemplateId", t.recurringTemplateId ?: JSONObject.NULL)
+                put("sourceOccurrenceDate", t.sourceOccurrenceDate ?: JSONObject.NULL)
                 put("createdAtEpochMillis", t.createdAtEpochMillis)
                 put("updatedAtEpochMillis", t.updatedAtEpochMillis)
             })
@@ -156,7 +167,27 @@ object BackupSerializer {
         }
     }
 
-    // --- Parsers ---
+    private fun recurringTemplatesToJson(list: List<RecurringTemplateJson>) = JSONArray().apply {
+        list.forEach { t ->
+            put(JSONObject().apply {
+                put("id", t.id)
+                put("title", t.title)
+                put("amountMinor", t.amountMinor)
+                put("currencyCode", t.currencyCode)
+                put("categoryNameSnapshot", t.categoryNameSnapshot)
+                put("iconKey", t.iconKey ?: JSONObject.NULL)
+                put("note", t.note ?: JSONObject.NULL)
+                put("frequency", t.frequency)
+                put("startDate", t.startDate)
+                put("endDate", t.endDate ?: JSONObject.NULL)
+                put("dayOfMonth", t.dayOfMonth ?: JSONObject.NULL)
+                put("applyMode", t.applyMode)
+                put("isActive", t.isActive)
+                put("createdAtEpochMillis", t.createdAtEpochMillis)
+                put("updatedAtEpochMillis", t.updatedAtEpochMillis)
+            })
+        }
+    }
 
     private fun parsePeriods(arr: JSONArray): List<PeriodJson> =
         (0 until arr.length()).map { i ->
@@ -168,6 +199,7 @@ object BackupSerializer {
                 endDate = o.getString("endDate"),
                 totalAmountMinor = o.getLong("totalAmountMinor"),
                 currencyCode = o.getString("currencyCode"),
+                isActive = o.optBoolean("isActive", true),
                 createdAtEpochMillis = o.getLong("createdAtEpochMillis"),
                 updatedAtEpochMillis = o.getLong("updatedAtEpochMillis"),
             )
@@ -180,6 +212,7 @@ object BackupSerializer {
                 id = o.getLong("id"),
                 budgetPeriodId = o.getLong("budgetPeriodId"),
                 name = o.getString("name"),
+                iconKey = o.optString("iconKey", "other"),
                 allocatedAmountMinor = o.getLong("allocatedAmountMinor"),
                 displayOrder = o.getInt("displayOrder"),
                 isArchived = o.getBoolean("isArchived"),
@@ -198,6 +231,9 @@ object BackupSerializer {
                 paidAtEpochMillis = o.getLong("paidAtEpochMillis"),
                 categoryId = if (o.isNull("categoryId")) null else o.getLong("categoryId"),
                 splitCount = o.getInt("splitCount"),
+                sourceType = o.optString("sourceType", "MANUAL"),
+                recurringTemplateId = if (o.isNull("recurringTemplateId")) null else o.getLong("recurringTemplateId"),
+                sourceOccurrenceDate = if (o.isNull("sourceOccurrenceDate")) null else o.getString("sourceOccurrenceDate"),
                 createdAtEpochMillis = o.getLong("createdAtEpochMillis"),
                 updatedAtEpochMillis = o.getLong("updatedAtEpochMillis"),
             )
@@ -218,6 +254,28 @@ object BackupSerializer {
                 plannedPeriodOffset = o.getInt("plannedPeriodOffset"),
                 pendingPeriodStartDate = if (o.isNull("pendingPeriodStartDate")) null else o.getString("pendingPeriodStartDate"),
                 status = o.getString("status"),
+            )
+        }
+
+    private fun parseRecurringTemplates(arr: JSONArray): List<RecurringTemplateJson> =
+        (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            RecurringTemplateJson(
+                id = o.getLong("id"),
+                title = o.getString("title"),
+                amountMinor = o.getLong("amountMinor"),
+                currencyCode = o.getString("currencyCode"),
+                categoryNameSnapshot = o.getString("categoryNameSnapshot"),
+                iconKey = if (o.isNull("iconKey")) null else o.getString("iconKey"),
+                note = if (o.isNull("note")) null else o.getString("note"),
+                frequency = o.getString("frequency"),
+                startDate = o.getString("startDate"),
+                endDate = if (o.isNull("endDate")) null else o.getString("endDate"),
+                dayOfMonth = if (o.isNull("dayOfMonth")) null else o.getInt("dayOfMonth"),
+                applyMode = o.optString("applyMode", "CONFIRM"),
+                isActive = o.optBoolean("isActive", true),
+                createdAtEpochMillis = o.getLong("createdAtEpochMillis"),
+                updatedAtEpochMillis = o.getLong("updatedAtEpochMillis"),
             )
         }
 }

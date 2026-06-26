@@ -9,6 +9,7 @@ data class TransactionImpactRow(
     val paidAmountMinor: Long,
     val paidDate: LocalDate,
     val paidAtEpochMillis: Long,
+    val categoryId: Long?,
     val splitCount: Int,
     val impactAmountMinor: Long,
 )

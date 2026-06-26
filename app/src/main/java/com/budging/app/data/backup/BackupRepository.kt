@@ -19,6 +19,7 @@ class BackupRepository(
     private val categoryDao get() = database.budgetCategoryDao()
     private val transactionDao get() = database.transactionDao()
     private val impactDao get() = database.budgetImpactDao()
+    private val recurringTemplateDao get() = database.recurringExpenseTemplateDao()
 
     suspend fun exportJson(uri: Uri): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
@@ -30,6 +31,7 @@ class BackupRepository(
                 budgetCategories = categoryDao.getAll().map { it.toJson() },
                 transactions = transactionDao.getAll().map { it.toJson() },
                 budgetImpacts = impactDao.getAll().map { it.toJson() },
+                recurringExpenseTemplates = recurringTemplateDao.getAll().map { it.toJson() },
             )
             val json = BackupSerializer.serialize(backup)
             appContext.contentResolver.openOutputStream(uri)?.use { out ->
@@ -51,17 +53,20 @@ class BackupRepository(
             val categories = backup.budgetCategories.map { it.toEntity() }
             val transactions = backup.transactions.map { it.toEntity() }
             val impacts = backup.budgetImpacts.map { it.toEntity() }
+            val recurringTemplates = backup.recurringExpenseTemplates.map { it.toEntity() }
 
             database.withTransaction {
                 // Delete in FK-safe order
                 impactDao.deleteAll()
                 transactionDao.deleteAll()
+                recurringTemplateDao.deleteAll()
                 categoryDao.deleteAll()
                 periodDao.deleteAll()
 
                 // Insert in FK-safe order
                 periods.forEach { periodDao.upsert(it) }
                 categories.forEach { categoryDao.upsert(it) }
+                recurringTemplates.forEach { recurringTemplateDao.upsert(it) }
                 transactionDao.insertAll(transactions)
                 impactDao.insertAll(impacts)
 

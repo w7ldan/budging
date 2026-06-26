@@ -16,6 +16,7 @@ class AppContainer(context: Context) {
         BudgingDatabase.migration2To3,
         BudgingDatabase.migration3To4,
         BudgingDatabase.migration4To5,
+        BudgingDatabase.migration5To6,
     ).build()
 
     val budgetRepository = BudgetRepository(
@@ -25,6 +26,7 @@ class AppContainer(context: Context) {
         budgetCategoryDao = database.budgetCategoryDao(),
         transactionDao = database.transactionDao(),
         budgetImpactDao = database.budgetImpactDao(),
+        recurringTemplateDao = database.recurringExpenseTemplateDao(),
     )
 
     val backupRepository = BackupRepository(

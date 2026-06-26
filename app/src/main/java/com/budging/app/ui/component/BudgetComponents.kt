@@ -5,8 +5,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,19 +18,24 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.DirectionsBus
-import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Flight
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalCafe
+import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.NotificationsNone
-import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Restaurant
-import androidx.compose.material.icons.filled.SettingsSuggest
+import androidx.compose.material.icons.filled.Savings
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -50,14 +55,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.budging.app.ui.Screen
-import com.budging.app.ui.theme.AppInkBlue
-import com.budging.app.ui.theme.AppPrimary
+import com.budging.app.ui.theme.AppDangerSoft
 import com.budging.app.ui.theme.AppPrimarySoft
-import com.budging.app.ui.theme.AppSecondary
-import com.budging.app.ui.theme.AppSecondarySoft
-import com.budging.app.ui.theme.AppSuccess
-import com.budging.app.ui.theme.AppSurfaceLow
-import com.budging.app.ui.theme.AppWarm
+import com.budging.app.ui.theme.AppSuccessSoft
 import com.budging.app.ui.theme.AppWarmSoft
 import com.budging.app.ui.theme.BudgingTheme
 
@@ -65,6 +65,28 @@ data class CategoryAccent(
     val icon: ImageVector,
     val tint: Color,
     val background: Color,
+)
+
+data class CategoryIconOption(
+    val key: String,
+    val label: String,
+    val icon: ImageVector,
+)
+
+private val categoryIconOptions = listOf(
+    CategoryIconOption("food", "Food", Icons.Default.Restaurant),
+    CategoryIconOption("transport", "Transport", Icons.Default.DirectionsCar),
+    CategoryIconOption("home", "Home", Icons.Default.Home),
+    CategoryIconOption("utilities", "Utilities", Icons.Default.Bolt),
+    CategoryIconOption("shopping", "Shopping", Icons.Default.ShoppingBag),
+    CategoryIconOption("fun", "Fun", Icons.Default.Celebration),
+    CategoryIconOption("health", "Health", Icons.Default.MedicalServices),
+    CategoryIconOption("gym", "Gym", Icons.Default.FitnessCenter),
+    CategoryIconOption("education", "Education", Icons.Default.School),
+    CategoryIconOption("coffee", "Coffee", Icons.Default.LocalCafe),
+    CategoryIconOption("travel", "Travel", Icons.Default.Flight),
+    CategoryIconOption("savings", "Savings", Icons.Default.Savings),
+    CategoryIconOption("other", "Other", Icons.Default.Category),
 )
 
 @Composable
@@ -117,7 +139,10 @@ fun SectionHeader(
             if (action != null && onAction != null) {
                 Text(
                     action,
-                    modifier = Modifier.clip(RoundedCornerShape(999.dp)).clickable { onAction() }.padding(8.dp),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .clickable { onAction() }
+                        .padding(8.dp),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -175,8 +200,9 @@ fun BudgetProgressBar(
 @Composable
 fun CategoryIconBubble(
     categoryName: String,
+    iconKey: String? = null,
     modifier: Modifier = Modifier,
-    accent: CategoryAccent = categoryAccent(categoryName),
+    accent: CategoryAccent = categoryAccent(categoryName, iconKey),
 ) {
     Box(
         modifier = modifier
@@ -200,36 +226,27 @@ fun BottomNavItemPill(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val accent = when (screen) {
-        Screen.Dashboard -> AppSecondarySoft
-        Screen.BudgetSetup -> MaterialTheme.colorScheme.surfaceVariant
-        Screen.LogExpense -> AppWarmSoft
-        Screen.Settings -> AppPrimarySoft
-        Screen.CategoryDetail -> AppPrimarySoft
-        Screen.TransactionHistory -> AppPrimarySoft
-        Screen.TransactionDetail -> AppPrimarySoft
-        Screen.EditTransaction -> AppPrimarySoft
-        Screen.BudgetPeriodList -> AppPrimarySoft
-        Screen.CreateNextPeriod -> AppPrimarySoft
-    }
+    val container = if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
+    val content = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
     Column(
         modifier = Modifier
             .clip(RoundedCornerShape(999.dp))
-            .background(if (selected) accent else Color.Transparent)
+            .background(container)
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Icon(
-            imageVector = screenIcon(screen),
+            imageVector = screenIcon(screen, selected),
             contentDescription = screen.label,
-            tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp),
+            tint = content,
         )
         Text(
             screen.label,
             style = MaterialTheme.typography.labelMedium,
-            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = content,
         )
     }
 }
@@ -244,7 +261,7 @@ fun BudgetTopBar(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = BudgingTheme.spacing.xl, vertical = BudgingTheme.spacing.md),
+            .padding(horizontal = BudgingTheme.spacing.xl, vertical = BudgingTheme.spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -303,16 +320,14 @@ fun BudgetChip(
         selected = selected,
         onClick = onClick,
         label = { Text(label, maxLines = 1) },
-        leadingIcon = {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
-        },
+        leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
         colors = FilterChipDefaults.filterChipColors(
             containerColor = MaterialTheme.colorScheme.surface,
-            selectedContainerColor = AppSecondarySoft,
+            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
             labelColor = MaterialTheme.colorScheme.onSurface,
-            selectedLabelColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
             iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            selectedLeadingIconColor = MaterialTheme.colorScheme.primary,
+            selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
         ),
         border = FilterChipDefaults.filterChipBorder(
             enabled = true,
@@ -323,17 +338,43 @@ fun BudgetChip(
     )
 }
 
-fun categoryAccent(name: String): CategoryAccent {
-    val key = name.lowercase()
+fun categoryAccent(name: String, iconKey: String? = null): CategoryAccent {
+    val resolvedKey = resolveCategoryIconKey(name, iconKey)
+    val icon = categoryIcon(resolvedKey)
+    val (background, tint) = when (resolvedKey) {
+        "food", "coffee" -> AppWarmSoft to MaterialThemeFallback.warmText
+        "transport", "travel" -> AppPrimarySoft to MaterialThemeFallback.primaryText
+        "home", "shopping", "education" -> MaterialThemeFallback.selectedContainer to MaterialThemeFallback.selectedContent
+        "utilities", "savings" -> AppSuccessSoft to MaterialThemeFallback.successText
+        "fun" -> AppDangerSoft to MaterialThemeFallback.dangerText
+        "health", "gym" -> AppSuccessSoft to MaterialThemeFallback.successText
+        else -> MaterialThemeFallback.neutralContainer to MaterialThemeFallback.neutralContent
+    }
+    return CategoryAccent(icon = icon, tint = tint, background = background)
+}
+
+fun categoryIcon(key: String?): ImageVector =
+    categoryIconOptions.firstOrNull { it.key == key }?.icon ?: Icons.Default.Category
+
+fun allCategoryIconOptions(): List<CategoryIconOption> = categoryIconOptions
+
+fun resolveCategoryIconKey(name: String, iconKey: String? = null): String {
+    if (iconKey != null && categoryIconOptions.any { it.key == iconKey }) return iconKey
+    val lower = name.lowercase()
     return when {
-        "food" in key || "restaurant" in key -> CategoryAccent(Icons.Default.Restaurant, AppPrimary, AppSecondarySoft)
-        "transport" in key || "travel" in key -> CategoryAccent(Icons.Default.DirectionsBus, AppWarm, AppWarmSoft.copy(alpha = 0.6f))
-        "gym" in key || "fitness" in key -> CategoryAccent(Icons.Default.FitnessCenter, AppSuccess, AppSuccess.copy(alpha = 0.15f))
-        "fun" in key || "entertain" in key -> CategoryAccent(Icons.Default.Celebration, AppWarm, AppWarmSoft)
-        "shopping" in key -> CategoryAccent(Icons.Default.ShoppingBag, AppInkBlue, AppPrimarySoft)
-        "coffee" in key -> CategoryAccent(Icons.Default.LocalCafe, AppWarm, AppWarmSoft)
-        "utility" in key -> CategoryAccent(Icons.Default.Bolt, AppInkBlue, AppPrimarySoft.copy(alpha = 0.6f))
-        else -> CategoryAccent(Icons.Default.Payments, AppSecondary, AppSurfaceLow)
+        "food" in lower || "restaurant" in lower -> "food"
+        "transport" in lower || "car" in lower || "commute" in lower -> "transport"
+        "home" in lower || "rent" in lower -> "home"
+        "utility" in lower || "electric" in lower || "water" in lower -> "utilities"
+        "shop" in lower -> "shopping"
+        "fun" in lower || "entertain" in lower -> "fun"
+        "health" in lower || "doctor" in lower -> "health"
+        "gym" in lower || "fitness" in lower -> "gym"
+        "school" in lower || "education" in lower || "course" in lower -> "education"
+        "coffee" in lower || "cafe" in lower -> "coffee"
+        "travel" in lower || "flight" in lower || "holiday" in lower || "trip" in lower -> "travel"
+        "save" in lower || "emergency fund" in lower -> "savings"
+        else -> "other"
     }
 }
 
@@ -389,15 +430,21 @@ fun Keypad(
     }
 }
 
-private fun screenIcon(screen: Screen): ImageVector = when (screen) {
-    Screen.Dashboard -> Icons.Default.Dashboard
-    Screen.BudgetSetup -> Icons.Default.SettingsSuggest
-    Screen.LogExpense -> Icons.Default.Add
-    Screen.Settings -> Icons.Default.EditNote
-    Screen.CategoryDetail -> Icons.Default.EditNote
-    Screen.TransactionHistory -> Icons.Default.EditNote
-    Screen.TransactionDetail -> Icons.Default.EditNote
-    Screen.EditTransaction -> Icons.Default.EditNote
-    Screen.BudgetPeriodList -> Icons.Default.SettingsSuggest
-    Screen.CreateNextPeriod -> Icons.Default.SettingsSuggest
+private fun screenIcon(screen: Screen, selected: Boolean): ImageVector = when (screen) {
+    Screen.Dashboard -> Icons.Filled.Dashboard
+    Screen.BudgetSetup -> Icons.Filled.AccountBalanceWallet
+    Screen.LogExpense -> Icons.Filled.AddCircle
+    Screen.Settings -> Icons.Filled.Settings
+    else -> Icons.Filled.Settings
+}
+
+private object MaterialThemeFallback {
+    val selectedContainer = Color(0xFFD0E1FB)
+    val selectedContent = Color(0xFF000000)
+    val neutralContainer = Color(0xFFE4E2E4)
+    val neutralContent = Color(0xFF1B1B1D)
+    val primaryText = Color(0xFF131B2E)
+    val successText = Color(0xFF1E5E43)
+    val warmText = Color(0xFF614B24)
+    val dangerText = Color(0xFF8B120F)
 }

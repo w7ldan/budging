@@ -15,6 +15,7 @@ data class BudgetSetupState(
 data class BudgetCategoryItem(
     val id: Long,
     val name: String,
+    val iconKey: String,
     val allocatedAmountMinor: Long,
     val spentAmountMinor: Long,
     val isArchived: Boolean,

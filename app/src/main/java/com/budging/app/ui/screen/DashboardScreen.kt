@@ -26,7 +26,6 @@ import com.budging.app.ui.component.BudgetProgressBar
 import com.budging.app.ui.component.BudgetScaffoldCard
 import com.budging.app.ui.component.CategoryIconBubble
 import com.budging.app.ui.component.SectionHeader
-import com.budging.app.ui.component.categoryAccent
 import com.budging.app.ui.format.formatCurrency
 import com.budging.app.ui.theme.BudgingTheme
 
@@ -61,7 +60,7 @@ fun DashboardScreen(
             }
         } else {
             items(state.categories) { category ->
-                val accent = categoryAccent(category.name)
+                val accent = com.budging.app.ui.component.categoryAccent(category.name, category.iconKey)
                 BudgetScaffoldCard(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -72,7 +71,7 @@ fun DashboardScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.Top,
                     ) {
-                        CategoryIconBubble(categoryName = category.name)
+                        CategoryIconBubble(categoryName = category.name, iconKey = category.iconKey)
                         Surface(
                             color = accent.background,
                             contentColor = accent.tint,
@@ -125,7 +124,7 @@ fun DashboardScreen(
                             horizontalArrangement = Arrangement.spacedBy(spacing.md),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            CategoryIconBubble(categoryName = transaction.title, modifier = Modifier.size(40.dp))
+                            CategoryIconBubble(categoryName = transaction.title, iconKey = transaction.categoryIconKey, modifier = Modifier.size(40.dp))
                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(transaction.title, style = MaterialTheme.typography.titleMedium)
                                 Text(

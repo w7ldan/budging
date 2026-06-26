@@ -23,5 +23,6 @@ data class ExpenseEntryState(
 data class ExpenseCategoryOption(
     val id: Long,
     val name: String,
+    val iconKey: String,
     val remainingAmountMinor: Long,
 )

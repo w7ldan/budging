@@ -1,5 +1,6 @@
 package com.budging.app.ui.screen
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -33,6 +34,8 @@ import com.budging.app.ui.component.BudgetMetricRow
 import com.budging.app.ui.component.BudgetScaffoldCard
 import com.budging.app.ui.component.CategoryIconBubble
 import com.budging.app.ui.component.SectionHeader
+import com.budging.app.ui.component.allCategoryIconOptions
+import com.budging.app.ui.component.resolveCategoryIconKey
 import com.budging.app.ui.format.formatCurrency
 import com.budging.app.ui.theme.BudgingTheme
 
@@ -40,7 +43,7 @@ import com.budging.app.ui.theme.BudgingTheme
 fun BudgetSetupScreen(
     state: BudgetSetupState,
     onSaveBudget: (name: String, totalAmountMinor: Long, currencyCode: String, startDateText: String, endDateText: String) -> Unit,
-    onSaveCategory: (categoryId: Long?, name: String, allocatedAmountMinor: Long) -> Unit,
+    onSaveCategory: (categoryId: Long?, name: String, allocatedAmountMinor: Long, iconKey: String) -> Unit,
     onArchiveCategory: (categoryId: Long, isArchived: Boolean) -> Unit,
     onDeleteCategory: (categoryId: Long) -> Unit,
 ) {
@@ -53,6 +56,7 @@ fun BudgetSetupScreen(
     var editingCategoryId by remember { mutableStateOf<Long?>(null) }
     var categoryName by rememberSaveable(state.activePeriodId, editingCategoryId) { mutableStateOf("") }
     var categoryAmountText by rememberSaveable(state.activePeriodId, editingCategoryId) { mutableStateOf("") }
+    var categoryIconKey by rememberSaveable(state.activePeriodId, editingCategoryId) { mutableStateOf("other") }
 
     val totalForPreview = totalAmountText.toLongOrNull() ?: 0L
     val projectedUnallocated = totalForPreview - state.categories
@@ -117,16 +121,26 @@ fun BudgetSetupScreen(
             BudgetScaffoldCard {
                 SectionHeader(title = "Add Category")
                 MinimalInputRow("Category Name", categoryName, modifier = Modifier.fillMaxWidth()) { categoryName = it }
+                CategoryIconPicker(
+                    selectedIconKey = categoryIconKey,
+                    onSelect = { categoryIconKey = it },
+                )
                 MinimalInputRow("Allocated Amount", categoryAmountText, modifier = Modifier.fillMaxWidth(), keyboardType = KeyboardType.Number) {
                     categoryAmountText = it.filter(Char::isDigit)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
                     Button(
                         onClick = {
-                            onSaveCategory(editingCategoryId, categoryName, categoryAmountText.toLongOrNull() ?: 0L)
+                            onSaveCategory(
+                                editingCategoryId,
+                                categoryName,
+                                categoryAmountText.toLongOrNull() ?: 0L,
+                                categoryIconKey.ifBlank { resolveCategoryIconKey(categoryName) },
+                            )
                             editingCategoryId = null
                             categoryName = ""
                             categoryAmountText = ""
+                            categoryIconKey = "other"
                         },
                         enabled = state.hasActiveBudget,
                     ) {
@@ -137,6 +151,7 @@ fun BudgetSetupScreen(
                             editingCategoryId = null
                             categoryName = ""
                             categoryAmountText = ""
+                            categoryIconKey = "other"
                         }) { Text("Cancel") }
                     }
                 }
@@ -162,7 +177,7 @@ fun BudgetSetupScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Row(horizontalArrangement = Arrangement.spacedBy(spacing.md), verticalAlignment = Alignment.CenterVertically) {
-                            CategoryIconBubble(category.name)
+                            CategoryIconBubble(category.name, iconKey = category.iconKey)
                             Column {
                                 Text(category.name, style = MaterialTheme.typography.titleMedium)
                                 Text(if (category.isArchived) "Archived" else "Active", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -178,12 +193,51 @@ fun BudgetSetupScreen(
                             editingCategoryId = category.id
                             categoryName = category.name
                             categoryAmountText = category.allocatedAmountMinor.toString()
+                            categoryIconKey = category.iconKey
                         }) { Text("Edit") }
                         TextButton(onClick = { onArchiveCategory(category.id, !category.isArchived) }) {
                             Text(if (category.isArchived) "Restore" else "Archive")
                         }
                         if (!category.hasTransactions) {
                             TextButton(onClick = { onDeleteCategory(category.id) }) { Text("Delete") }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CategoryIconPicker(
+    selectedIconKey: String,
+    onSelect: (String) -> Unit,
+) {
+    val spacing = BudgingTheme.spacing
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+        Text("Category Icon", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        allCategoryIconOptions().chunked(4).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                row.forEach { option ->
+                    val selected = option.key == selectedIconKey
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onSelect(option.key) },
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            CategoryIconBubble(option.label, iconKey = option.key)
+                            Text(
+                                option.label,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
                 }

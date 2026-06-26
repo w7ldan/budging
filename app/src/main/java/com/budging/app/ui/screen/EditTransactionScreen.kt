@@ -37,7 +37,7 @@ import com.budging.app.ui.component.BudgetChip
 import com.budging.app.ui.component.BudgetScaffoldCard
 import com.budging.app.ui.component.Keypad
 import com.budging.app.ui.component.SectionHeader
-import com.budging.app.ui.component.categoryAccent
+import com.budging.app.ui.component.categoryIcon
 import com.budging.app.ui.format.formatCurrency
 import com.budging.app.ui.theme.BudgingTheme
 
@@ -60,8 +60,6 @@ fun EditTransactionScreen(
     var noteText by rememberSaveable { mutableStateOf(state.note ?: "") }
 
     val amountMinor = amountText.toLongOrNull() ?: 0L
-    val selectedCategory = categories.firstOrNull { it.id == selectedCategoryId }
-
     LazyColumn(
         modifier = Modifier.padding(horizontal = spacing.xl),
         contentPadding = PaddingValues(bottom = spacing.xxl + 88.dp),
@@ -112,7 +110,7 @@ fun EditTransactionScreen(
                             BudgetChip(
                                 selected = selectedCategoryId == category.id,
                                 label = category.name,
-                                icon = categoryAccent(category.name).icon,
+                                icon = categoryIcon(category.iconKey),
                                 onClick = { selectedCategoryId = category.id },
                             )
                         }

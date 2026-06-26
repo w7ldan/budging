@@ -9,6 +9,7 @@ import com.budging.app.data.local.entity.TransactionEntity
 import com.budging.app.data.local.query.TransactionHistoryRow
 import com.budging.app.data.local.query.TransactionImpactRow
 import kotlinx.coroutines.flow.Flow
+import java.time.LocalDate
 
 @Dao
 interface TransactionDao {
@@ -21,6 +22,7 @@ interface TransactionDao {
             t.amount_minor AS paidAmountMinor,
             t.paid_date_epoch AS paidDate,
             t.paid_at_epoch_millis AS paidAtEpochMillis,
+            t.category_id AS categoryId,
             t.split_count AS splitCount,
             bi.amount_minor AS impactAmountMinor
         FROM transactions t
@@ -42,6 +44,7 @@ interface TransactionDao {
             t.amount_minor AS paidAmountMinor,
             t.paid_date_epoch AS paidDate,
             t.paid_at_epoch_millis AS paidAtEpochMillis,
+            t.category_id AS categoryId,
             t.split_count AS splitCount,
             bi.amount_minor AS impactAmountMinor
         FROM transactions t
@@ -70,6 +73,16 @@ interface TransactionDao {
 
     @Query("SELECT * FROM transactions WHERE id = :transactionId")
     suspend fun getById(transactionId: Long): TransactionEntity?
+
+    @Query(
+        """
+        SELECT id FROM transactions
+        WHERE recurring_template_id = :templateId
+          AND source_occurrence_date_epoch = :occurrenceDate
+        LIMIT 1
+        """,
+    )
+    suspend fun findRecurringTransactionId(templateId: Long, occurrenceDate: LocalDate): Long?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(transaction: TransactionEntity): Long

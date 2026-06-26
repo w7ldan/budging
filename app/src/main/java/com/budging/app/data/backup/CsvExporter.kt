@@ -24,7 +24,8 @@ object CsvExporter {
         val header = listOf(
             "Transaction ID", "Title", "Paid Date", "Amount (minor)", "Currency",
             "Category", "Budget Period", "Note",
-            "Split Count", "Impact Amount (minor)", "Status", "Budget Impact ID",
+            "Split Count", "Source Type", "Recurring Template ID", "Source Occurrence Date",
+            "Impact Amount (minor)", "Status", "Budget Impact ID",
         )
 
         val rows = transactions.sortedByDescending { it.paidAtEpochMillis }.map { tx ->
@@ -46,6 +47,9 @@ object CsvExporter {
                     "${period?.name ?: "—"} (${period?.startDate?.toString() ?: "?"} to ${period?.endDate?.toString() ?: "?"})",
                     tx.note ?: "",
                     tx.splitCount.toString(),
+                    tx.sourceType,
+                    tx.recurringTemplateId?.toString().orEmpty(),
+                    tx.sourceOccurrenceDate?.toString().orEmpty(),
                     impact.amountMinor.toString(),
                     impact.status,
                     impact.id.toString(),

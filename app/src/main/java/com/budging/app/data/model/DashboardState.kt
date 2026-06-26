@@ -36,6 +36,7 @@ data class DashboardState(
 data class DashboardCategory(
     val id: Long,
     val name: String,
+    val iconKey: String,
     val allocatedAmountMinor: Long,
     val spentAmountMinor: Long,
     val remainingAmountMinor: Long,
@@ -51,4 +52,5 @@ data class RecentTransaction(
     val splitCount: Int,
     val paidDateLabel: String,
     val note: String?,
+    val categoryIconKey: String? = null,
 )

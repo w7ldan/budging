@@ -43,7 +43,7 @@ import com.budging.app.ui.component.BudgetMetricRow
 import com.budging.app.ui.component.BudgetScaffoldCard
 import com.budging.app.ui.component.Keypad
 import com.budging.app.ui.component.SectionHeader
-import com.budging.app.ui.component.categoryAccent
+import com.budging.app.ui.component.categoryIcon
 import com.budging.app.ui.format.formatCurrency
 import com.budging.app.ui.theme.BudgingTheme
 import java.time.LocalDate
@@ -121,7 +121,7 @@ fun LogExpenseScreen(
                         BudgetChip(
                             selected = selectedCategoryId == category.id,
                             label = category.name,
-                            icon = categoryAccent(category.name).icon,
+                            icon = categoryIcon(category.iconKey),
                             onClick = { selectedCategoryId = category.id },
                         )
                     }
@@ -224,12 +224,12 @@ private fun SplitModeChip(
         text = label,
         modifier = Modifier
             .background(
-                if (selected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
+                if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,
                 RoundedCornerShape(999.dp),
             )
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 8.dp),
-        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        color = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
         style = MaterialTheme.typography.labelLarge,
     )
 }

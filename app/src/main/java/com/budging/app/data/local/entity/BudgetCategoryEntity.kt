@@ -22,6 +22,7 @@ data class BudgetCategoryEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     @ColumnInfo(name = "budget_period_id") val budgetPeriodId: Long,
     val name: String,
+    @ColumnInfo(name = "icon_key") val iconKey: String = "other",
     @ColumnInfo(name = "allocated_amount_minor") val allocatedAmountMinor: Long,
     @ColumnInfo(name = "display_order") val displayOrder: Int = 0,
     @ColumnInfo(name = "is_archived") val isArchived: Boolean = false,
