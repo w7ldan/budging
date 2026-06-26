@@ -209,6 +209,8 @@ fun BottomNavItemPill(
         Screen.TransactionHistory -> AppPrimarySoft
         Screen.TransactionDetail -> AppPrimarySoft
         Screen.EditTransaction -> AppPrimarySoft
+        Screen.BudgetPeriodList -> AppPrimarySoft
+        Screen.CreateNextPeriod -> AppPrimarySoft
     }
     Column(
         modifier = Modifier
@@ -396,4 +398,6 @@ private fun screenIcon(screen: Screen): ImageVector = when (screen) {
     Screen.TransactionHistory -> Icons.Default.EditNote
     Screen.TransactionDetail -> Icons.Default.EditNote
     Screen.EditTransaction -> Icons.Default.EditNote
+    Screen.BudgetPeriodList -> Icons.Default.SettingsSuggest
+    Screen.CreateNextPeriod -> Icons.Default.SettingsSuggest
 }

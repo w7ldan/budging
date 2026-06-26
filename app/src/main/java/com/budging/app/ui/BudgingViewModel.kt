@@ -11,6 +11,8 @@ import com.budging.app.data.model.BudgetSetupState
 import com.budging.app.data.model.CategoryDetailState
 import com.budging.app.data.model.DashboardState
 import com.budging.app.data.model.ExpenseEntryState
+import com.budging.app.data.model.PendingImpactDetail
+import com.budging.app.data.model.PeriodSummary
 import com.budging.app.data.model.TransactionDetailState
 import com.budging.app.data.repo.BudgetRepository
 import com.budging.app.domain.SplitExpensePlanner
@@ -85,6 +87,22 @@ class BudgingViewModel(
 
     val transactionHistoryState: StateFlow<List<TransactionHistoryRow>> =
         budgetRepository.observeAllTransactions()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptyList(),
+            )
+
+    val periodListState: StateFlow<List<PeriodSummary>> =
+        budgetRepository.observeAllPeriods()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptyList(),
+            )
+
+    val pendingImpactsState: StateFlow<List<PendingImpactDetail>> =
+        budgetRepository.observePendingImpacts()
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
@@ -323,6 +341,62 @@ class BudgingViewModel(
                 selectedTransactionId.value = null
             }.onFailure {
                 _message.value = it.message ?: "Could not update expense."
+            }
+        }
+    }
+
+    fun createNextPeriod(
+        name: String,
+        totalAmountMinor: Long,
+        currencyCode: String,
+        startDateText: String,
+        endDateText: String,
+        copyCategoryIds: List<Long>,
+        applyImpactIds: List<Long>,
+        impactCategoryMapping: Map<Long, Long>,
+    ) {
+        viewModelScope.launch {
+            runCatching {
+                val startDate = LocalDate.parse(startDateText)
+                val endDate = LocalDate.parse(endDateText)
+                budgetRepository.createNextPeriod(
+                    name = name,
+                    totalAmountMinor = totalAmountMinor,
+                    currencyCode = currencyCode,
+                    startDate = startDate,
+                    endDate = endDate,
+                    copyCategoryIds = copyCategoryIds,
+                    applyImpactIds = applyImpactIds,
+                    impactCategoryMapping = impactCategoryMapping,
+                )
+            }.onSuccess {
+                _message.value = "New budget period created."
+            }.onFailure {
+                _message.value = it.message ?: "Could not create period."
+            }
+        }
+    }
+
+    fun applyPendingImpact(impactId: Long, budgetPeriodId: Long, categoryId: Long) {
+        viewModelScope.launch {
+            runCatching {
+                budgetRepository.manuallyApplyPendingImpact(impactId, budgetPeriodId, categoryId)
+            }.onSuccess {
+                _message.value = "Pending impact applied."
+            }.onFailure {
+                _message.value = it.message ?: "Could not apply impact."
+            }
+        }
+    }
+
+    fun skipPendingImpact(impactId: Long) {
+        viewModelScope.launch {
+            runCatching {
+                budgetRepository.skipPendingImpact(impactId)
+            }.onSuccess {
+                _message.value = "Pending impact skipped."
+            }.onFailure {
+                _message.value = it.message ?: "Could not skip impact."
             }
         }
     }

@@ -21,6 +21,9 @@ import com.budging.app.data.model.DashboardState
 import com.budging.app.data.model.ExpenseCategoryOption
 import com.budging.app.data.model.ExpenseEntryState
 import com.budging.app.data.model.ImpactDetail
+import com.budging.app.data.model.PendingImpactDetail
+import com.budging.app.data.model.PendingMatchStatus
+import com.budging.app.data.model.PeriodSummary
 import com.budging.app.data.model.RecentTransaction
 import com.budging.app.data.model.TransactionDetailState
 import com.budging.app.domain.BudgetMath
@@ -30,7 +33,10 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import java.time.Instant
 import java.time.LocalDate
@@ -52,11 +58,11 @@ class BudgetRepository(
     private val shortDateFormatter = DateTimeFormatter.ofPattern("dd MMM")
     private val longDateFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy")
 
-    suspend fun getDashboardSnapshot(referenceDate: LocalDate = LocalDate.now()): DashboardState =
-        observeDashboard(referenceDate).first()
+    suspend fun getDashboardSnapshot(): DashboardState =
+        observeDashboard().first()
 
-    fun observeDashboard(referenceDate: LocalDate = LocalDate.now()): Flow<DashboardState> =
-        budgetPeriodDao.observeActive(referenceDate.toEpochDay()).flatMapLatest { period ->
+    fun observeDashboard(): Flow<DashboardState> =
+        budgetPeriodDao.observeActive().flatMapLatest { period ->
             if (period == null) {
                 flowOf(DashboardState.Empty)
             } else {
@@ -81,7 +87,7 @@ class BudgetRepository(
                     }
                     val totalRemaining = period.totalAmountMinor - spentForPeriod
                     val allocatedTotal = categories.sumOf { it.allocatedAmountMinor }
-                    val daysLeft = BudgetMath.daysRemainingInclusive(referenceDate, period.endDate)
+                    val daysLeft = BudgetMath.daysRemainingInclusive(LocalDate.now(), period.endDate)
                     DashboardState(
                         periodId = period.id,
                         periodName = period.name,
@@ -101,13 +107,13 @@ class BudgetRepository(
             }
         }
 
-    fun observeBudgetSetup(referenceDate: LocalDate = LocalDate.now()): Flow<BudgetSetupState> =
-        budgetPeriodDao.observeActive(referenceDate.toEpochDay()).flatMapLatest { period ->
+    fun observeBudgetSetup(): Flow<BudgetSetupState> =
+        budgetPeriodDao.observeActive().flatMapLatest { period ->
             if (period == null) {
                 flowOf(
                     BudgetSetupState(
-                        startDateText = referenceDate.toString(),
-                        endDateText = referenceDate.toString(),
+                        startDateText = LocalDate.now().toString(),
+                        endDateText = LocalDate.now().toString(),
                     ),
                 )
             } else {
@@ -142,8 +148,8 @@ class BudgetRepository(
             }
         }
 
-    fun observeExpenseEntry(referenceDate: LocalDate = LocalDate.now()): Flow<ExpenseEntryState> =
-        budgetPeriodDao.observeActive(referenceDate.toEpochDay()).flatMapLatest { period ->
+    fun observeExpenseEntry(): Flow<ExpenseEntryState> =
+        budgetPeriodDao.observeActive().flatMapLatest { period ->
             if (period == null) {
                 flowOf(ExpenseEntryState.Empty)
             } else {
@@ -201,36 +207,33 @@ class BudgetRepository(
         currencyCode: String,
         startDate: LocalDate,
         endDate: LocalDate,
-        today: LocalDate = LocalDate.now(),
     ): PendingApplicationResult {
         require(name.isNotBlank()) { "Budget name is required." }
         require(totalAmountMinor > 0) { "Budget amount must be positive." }
         require(!endDate.isBefore(startDate)) { "End date must be on or after start date." }
+        val today = LocalDate.now()
         require(!today.isBefore(startDate) && !today.isAfter(endDate)) {
             "Active budget period must include today."
         }
 
-        val active = budgetPeriodDao.getActive(today.toEpochDay())
+        val active = budgetPeriodDao.getActive()
         val now = System.currentTimeMillis()
-        val period = BudgetPeriodEntity(
-            id = active?.id ?: 0,
-            name = name.trim(),
-            startDate = startDate,
-            endDate = endDate,
-            totalAmountMinor = totalAmountMinor,
-            currencyCode = currencyCode.trim().uppercase().ifBlank { "IDR" },
-            createdAtEpochMillis = active?.createdAtEpochMillis ?: now,
-            updatedAtEpochMillis = now,
-        )
-
-        if (active != null) {
-            val allocated = budgetCategoryDao.getAllocatedSumForActive(active.id)
-            require(allocated <= totalAmountMinor) {
-                "Total budget cannot be lower than the current category allocations."
+        val periodId = database.withTransaction {
+            if (active != null) {
+                budgetPeriodDao.setActive(active.id, false)
             }
+            val period = BudgetPeriodEntity(
+                name = name.trim(),
+                startDate = startDate,
+                endDate = endDate,
+                totalAmountMinor = totalAmountMinor,
+                currencyCode = currencyCode.trim().uppercase().ifBlank { "IDR" },
+                isActive = true,
+                createdAtEpochMillis = now,
+                updatedAtEpochMillis = now,
+            )
+            budgetPeriodDao.upsert(period)
         }
-
-        val periodId = budgetPeriodDao.upsert(period)
         val result = applyPendingImpactsForPeriod(periodId)
         refreshQuickAccess()
         return result
@@ -240,12 +243,11 @@ class BudgetRepository(
         categoryId: Long?,
         name: String,
         allocatedAmountMinor: Long,
-        today: LocalDate = LocalDate.now(),
     ) {
         require(name.isNotBlank()) { "Category name is required." }
         require(allocatedAmountMinor > 0) { "Category allocation must be positive." }
 
-        val activePeriod = budgetPeriodDao.getActive(today.toEpochDay())
+        val activePeriod = budgetPeriodDao.getActive()
             ?: throw IllegalArgumentException("Create an active budget before adding categories.")
         val existing = categoryId?.let { budgetCategoryDao.getById(it) }
         val allocatedWithoutCurrent = budgetCategoryDao.getAllocatedSumForActive(activePeriod.id) -
@@ -289,8 +291,11 @@ class BudgetRepository(
         require(amountMinor > 0) { "Expense amount must be positive." }
 
         val paidDate = Instant.ofEpochMilli(paidAtEpochMillis).atZone(zoneId).toLocalDate()
-        val activePeriod = budgetPeriodDao.getActive(paidDate.toEpochDay())
-            ?: throw IllegalArgumentException("Expense date must be inside the active budget period.")
+        val activePeriod = budgetPeriodDao.getActive()
+            ?: throw IllegalArgumentException("No active budget period.")
+        require(!paidDate.isBefore(activePeriod.startDate) && !paidDate.isAfter(activePeriod.endDate)) {
+            "Expense date must be inside the active budget period (${activePeriod.startDate} to ${activePeriod.endDate})."
+        }
         val category = budgetCategoryDao.getById(categoryId)
             ?: throw IllegalArgumentException("Choose a valid category.")
         require(!category.isArchived) { "Archived categories cannot receive new expenses." }
@@ -345,8 +350,11 @@ class BudgetRepository(
         }
 
         val paidDate = Instant.ofEpochMilli(paidAtEpochMillis).atZone(zoneId).toLocalDate()
-        val activePeriod = budgetPeriodDao.getActive(paidDate.toEpochDay())
-            ?: throw IllegalArgumentException("Expense date must be inside the active budget period.")
+        val activePeriod = budgetPeriodDao.getActive()
+            ?: throw IllegalArgumentException("No active budget period.")
+        require(!paidDate.isBefore(activePeriod.startDate) && !paidDate.isAfter(activePeriod.endDate)) {
+            "Expense date must be inside the active budget period (${activePeriod.startDate} to ${activePeriod.endDate})."
+        }
         val category = budgetCategoryDao.getById(categoryId)
             ?: throw IllegalArgumentException("Choose a valid category.")
         require(!category.isArchived) { "Archived categories cannot receive new expenses." }
@@ -455,8 +463,8 @@ class BudgetRepository(
     ) {
         require(amountMinor > 0) { "Expense amount must be positive." }
         val paidDate = Instant.ofEpochMilli(paidAtEpochMillis).atZone(zoneId).toLocalDate()
-        val activePeriod = budgetPeriodDao.getActive(paidDate.toEpochDay())
-            ?: throw IllegalArgumentException("Expense date must be inside the active budget period.")
+        val activePeriod = budgetPeriodDao.getActive()
+            ?: throw IllegalArgumentException("No active budget period.")
         val category = budgetCategoryDao.getById(categoryId)
             ?: throw IllegalArgumentException("Choose a valid category.")
         require(!category.isArchived) { "Archived categories cannot receive new expenses." }
@@ -529,13 +537,29 @@ class BudgetRepository(
         QuickAccessUpdater.refresh(appContext)
     }
 
-    private suspend fun applyPendingImpactsForPeriod(periodId: Long): PendingApplicationResult {
+    private suspend fun applyPendingImpactsForPeriod(
+        periodId: Long,
+        manualMapping: Map<Long, Long> = emptyMap(),
+    ): PendingApplicationResult {
         val period = budgetPeriodDao.getById(periodId) ?: return PendingApplicationResult()
         val pendingImpacts = budgetImpactDao.getPendingImpacts()
         var appliedCount = 0
         var unresolvedCount = 0
 
         pendingImpacts.forEach { impact ->
+            // Check manual mapping first
+            val manualCategoryId = manualMapping[impact.id]
+            if (manualCategoryId != null) {
+                budgetImpactDao.applyPendingImpact(
+                    impactId = impact.id,
+                    budgetPeriodId = period.id,
+                    categoryId = manualCategoryId,
+                )
+                appliedCount += 1
+                return@forEach
+            }
+
+            // Auto-match logic
             val sourcePeriodId = impact.sourceBudgetPeriodId ?: run {
                 unresolvedCount += 1
                 return@forEach
@@ -572,6 +596,145 @@ class BudgetRepository(
             unresolvedCount = unresolvedCount,
             pendingRemaining = pendingRemaining,
         )
+    }
+
+    fun observeAllPeriods(): Flow<List<PeriodSummary>> =
+        budgetPeriodDao.observeAll().flatMapLatest { periods ->
+            if (periods.isEmpty()) flowOf(emptyList())
+            else {
+                val flows = periods.map { period ->
+                    budgetImpactDao.observeSpentForPeriod(period.id).flatMapLatest { spent ->
+                        flowOf(
+                            PeriodSummary(
+                                id = period.id,
+                                name = period.name,
+                                dateRangeLabel = formatDateRange(period.startDate, period.endDate),
+                                totalAmountMinor = period.totalAmountMinor,
+                                spentAmountMinor = spent,
+                                remainingAmountMinor = period.totalAmountMinor - spent,
+                                currencyCode = period.currencyCode,
+                                isActive = period.isActive,
+                                categoryCount = 0, // ponytail: count query if needed
+                            )
+                        )
+                    }
+                }
+                combine(flows) { it.toList() }
+            }
+        }
+
+    private val _pendingImpactsVersion = MutableStateFlow(0L)
+    val pendingImpactsVersion: StateFlow<Long> = _pendingImpactsVersion
+
+    fun observePendingImpacts(): Flow<List<PendingImpactDetail>> =
+        _pendingImpactsVersion.flatMapLatest {
+            flow { emit(buildPendingImpactDetails()) }
+        }
+
+    private fun notifyPendingImpactsChanged() {
+        _pendingImpactsVersion.value += 1
+    }
+
+    private suspend fun buildPendingImpactDetails(): List<PendingImpactDetail> {
+        val pendingImpacts = budgetImpactDao.getPendingImpacts()
+        val allCategories = budgetCategoryDao.getAll()
+        return pendingImpacts.mapNotNull { impact ->
+            val transaction = transactionDao.getById(impact.transactionId) ?: return@mapNotNull null
+            val sourcePeriod = impact.sourceBudgetPeriodId?.let { budgetPeriodDao.getById(it) }
+            val matching = allCategories.filter {
+                it.name.equals(impact.categoryNameSnapshot, ignoreCase = true)
+            }
+            val matchStatus = when {
+                matching.isEmpty() -> PendingMatchStatus.NO_MATCH
+                matching.size == 1 -> PendingMatchStatus.MATCHED
+                else -> PendingMatchStatus.AMBIGUOUS
+            }
+            PendingImpactDetail(
+                impactId = impact.id,
+                transactionId = impact.transactionId,
+                transactionTitle = transaction.title,
+                amountMinor = impact.amountMinor,
+                categoryNameSnapshot = impact.categoryNameSnapshot,
+                plannedPeriodOffset = impact.plannedPeriodOffset,
+                sourcePeriodName = sourcePeriod?.name,
+                matchingCategoryId = if (matching.size == 1) matching.single().id else null,
+                matchingCategoryName = if (matching.size == 1) matching.single().name else null,
+                matchStatus = matchStatus,
+            )
+        }
+    }
+
+    suspend fun createNextPeriod(
+        name: String,
+        totalAmountMinor: Long,
+        currencyCode: String,
+        startDate: LocalDate,
+        endDate: LocalDate,
+        copyCategoryIds: List<Long> = emptyList(),
+        applyImpactIds: List<Long> = emptyList(),
+        impactCategoryMapping: Map<Long, Long> = emptyMap(),
+    ) {
+        require(name.isNotBlank()) { "Budget name is required." }
+        require(totalAmountMinor > 0) { "Budget amount must be positive." }
+        require(!endDate.isBefore(startDate)) { "End date must be on or after start date." }
+
+        val activePeriod = budgetPeriodDao.getActive()
+        val now = System.currentTimeMillis()
+
+        val newPeriodId = database.withTransaction {
+            if (activePeriod != null) {
+                budgetPeriodDao.setActive(activePeriod.id, false)
+            }
+
+            val newId = budgetPeriodDao.upsert(
+                BudgetPeriodEntity(
+                    name = name.trim(),
+                    startDate = startDate,
+                    endDate = endDate,
+                    totalAmountMinor = totalAmountMinor,
+                    currencyCode = currencyCode.trim().uppercase().ifBlank { "IDR" },
+                    isActive = true,
+                    createdAtEpochMillis = now,
+                    updatedAtEpochMillis = now,
+                ),
+            )
+
+            copyCategoryIds.forEach { oldCategoryId ->
+                val oldCategory = budgetCategoryDao.getById(oldCategoryId) ?: return@forEach
+                budgetCategoryDao.upsert(
+                    BudgetCategoryEntity(
+                        budgetPeriodId = newId,
+                        name = oldCategory.name,
+                        allocatedAmountMinor = oldCategory.allocatedAmountMinor,
+                        displayOrder = oldCategory.displayOrder,
+                        isArchived = false,
+                    ),
+                )
+            }
+
+            newId
+        }
+
+        // Apply pending impacts — auto-match and manual-mapped
+        applyPendingImpactsForPeriod(newPeriodId, impactCategoryMapping)
+        notifyPendingImpactsChanged()
+        refreshQuickAccess()
+    }
+
+    suspend fun manuallyApplyPendingImpact(
+        impactId: Long,
+        budgetPeriodId: Long,
+        categoryId: Long,
+    ) {
+        budgetImpactDao.applyPendingImpact(impactId, budgetPeriodId, categoryId)
+        notifyPendingImpactsChanged()
+        refreshQuickAccess()
+    }
+
+    suspend fun skipPendingImpact(impactId: Long) {
+        budgetImpactDao.deleteById(impactId)
+        notifyPendingImpactsChanged()
+        refreshQuickAccess()
     }
 
     private fun toRecentTransaction(transaction: TransactionImpactRow): RecentTransaction = RecentTransaction(

@@ -15,6 +15,7 @@ class AppContainer(context: Context) {
         BudgingDatabase.migration1To2,
         BudgingDatabase.migration2To3,
         BudgingDatabase.migration3To4,
+        BudgingDatabase.migration4To5,
     ).build()
 
     val budgetRepository = BudgetRepository(

@@ -25,6 +25,7 @@ data class PeriodJson(
     val endDate: String,
     val totalAmountMinor: Long,
     val currencyCode: String,
+    val isActive: Boolean = true,
     val createdAtEpochMillis: Long,
     val updatedAtEpochMillis: Long,
 )
@@ -74,6 +75,7 @@ fun BudgetPeriodEntity.toJson() = PeriodJson(
     endDate = endDate.toString(),
     totalAmountMinor = totalAmountMinor,
     currencyCode = currencyCode,
+    isActive = isActive,
     createdAtEpochMillis = createdAtEpochMillis,
     updatedAtEpochMillis = updatedAtEpochMillis,
 )
@@ -85,6 +87,7 @@ fun PeriodJson.toEntity() = BudgetPeriodEntity(
     endDate = LocalDate.parse(endDate),
     totalAmountMinor = totalAmountMinor,
     currencyCode = currencyCode,
+    isActive = isActive,
     createdAtEpochMillis = createdAtEpochMillis,
     updatedAtEpochMillis = updatedAtEpochMillis,
 )

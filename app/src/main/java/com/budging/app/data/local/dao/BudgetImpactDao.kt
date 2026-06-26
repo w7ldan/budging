@@ -88,6 +88,9 @@ interface BudgetImpactDao {
     @Query("SELECT * FROM budget_impacts ORDER BY id")
     suspend fun getAll(): List<BudgetImpactEntity>
 
+    @Query("DELETE FROM budget_impacts WHERE id = :impactId")
+    suspend fun deleteById(impactId: Long)
+
     @Query("DELETE FROM budget_impacts")
     suspend fun deleteAll()
 }

@@ -36,6 +36,7 @@ fun DashboardScreen(
     onOpenCategory: (Long) -> Unit,
     onViewAllTransactions: () -> Unit = {},
     onTransactionClick: (Long) -> Unit = {},
+    onCreateBudget: () -> Unit = {},
 ) {
     val spacing = BudgingTheme.spacing
     LazyColumn(
@@ -44,7 +45,7 @@ fun DashboardScreen(
         verticalArrangement = Arrangement.spacedBy(spacing.xl),
     ) {
         if (!state.hasActiveBudget) {
-            item { EmptyDashboard() }
+            item { EmptyDashboard(onCreateBudget) }
             return@LazyColumn
         }
 
@@ -202,11 +203,25 @@ private fun HeroCard(state: DashboardState) {
 }
 
 @Composable
-private fun EmptyDashboard() {
-    EmptyDashboardCard(
-        title = "No active budget",
-        body = "Open Set Budget to create a budget period, allocate categories, and start logging expenses.",
-    )
+private fun EmptyDashboard(
+    onCreateBudget: () -> Unit = {},
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(BudgingTheme.spacing.lg)) {
+        EmptyDashboardCard(
+            title = "No active budget",
+            body = "Create a budget period to start tracking your spending.",
+        )
+        androidx.compose.material3.Button(
+            onClick = onCreateBudget,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+            ),
+        ) {
+            Text("Create Budget", style = MaterialTheme.typography.labelLarge)
+        }
+    }
 }
 
 @Composable

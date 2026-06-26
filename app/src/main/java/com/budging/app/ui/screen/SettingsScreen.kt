@@ -45,6 +45,7 @@ fun SettingsScreen(
     onImportJson: (Uri) -> Unit,
     onExportCsv: (Uri) -> Unit,
     onClearBackupMessage: () -> Unit,
+    onOpenPeriodList: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -106,6 +107,18 @@ fun SettingsScreen(
             .padding(horizontal = spacing.xl),
         verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
+        // --- Periods section ---
+        SectionHeader(title = "Budget Periods")
+
+        BudgetScaffoldCard {
+            OutlinedButton(
+                onClick = onOpenPeriodList,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("View All Budget Periods")
+            }
+        }
+
         // --- Quick Access section (existing) ---
         SectionHeader(eyebrow = "Extras", title = "Quick Access")
 

@@ -30,8 +30,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.budging.app.ui.screen.BudgetPeriodListScreen
 import com.budging.app.ui.screen.BudgetSetupScreen
 import com.budging.app.ui.screen.CategoryDetailScreen
+import com.budging.app.ui.screen.CreateNextPeriodScreen
 import com.budging.app.ui.screen.DashboardScreen
 import com.budging.app.ui.screen.EditTransactionScreen
 import com.budging.app.ui.screen.LogExpenseScreen
@@ -56,6 +58,8 @@ fun BudgingRoot(
     val categoryDetailState by viewModel.categoryDetailState.collectAsStateWithLifecycle()
     val transactionDetailState by viewModel.transactionDetailState.collectAsStateWithLifecycle()
     val transactionHistoryState by viewModel.transactionHistoryState.collectAsStateWithLifecycle()
+    val periodListState by viewModel.periodListState.collectAsStateWithLifecycle()
+    val pendingImpactsState by viewModel.pendingImpactsState.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val destination = backStackEntry?.destination
@@ -91,6 +95,8 @@ fun BudgingRoot(
                     Screen.TransactionHistory.route -> "Transaction History"
                     Screen.TransactionDetail.route -> "Transaction Detail"
                     Screen.EditTransaction.route -> "Edit Transaction"
+                    Screen.BudgetPeriodList.route -> "Budget Periods"
+                    Screen.CreateNextPeriod.route -> "Create Period"
                     else -> "Current Budget"
                 },
                 showBack = destination?.route in listOf(
@@ -98,6 +104,8 @@ fun BudgingRoot(
                     Screen.TransactionHistory.route,
                     Screen.TransactionDetail.route,
                     Screen.EditTransaction.route,
+                    Screen.BudgetPeriodList.route,
+                    Screen.CreateNextPeriod.route,
                 ),
                 onBack = {
                     if (navController.previousBackStackEntry != null) {
@@ -168,6 +176,9 @@ fun BudgingRoot(
                         viewModel.loadTransaction(transactionId)
                         navController.navigate(Screen.TransactionDetail.createRoute(transactionId))
                     },
+                    onCreateBudget = {
+                        navController.navigate(Screen.CreateNextPeriod.route)
+                    },
                 )
             }
             composable(Screen.BudgetSetup.route) {
@@ -227,6 +238,9 @@ fun BudgingRoot(
                     onImportJson = viewModel::importJson,
                     onExportCsv = viewModel::exportCsv,
                     onClearBackupMessage = viewModel::clearBackupMessage,
+                    onOpenPeriodList = {
+                        navController.navigate(Screen.BudgetPeriodList.route)
+                    },
                 )
             }
             composable(Screen.TransactionHistory.route) {
@@ -277,6 +291,55 @@ fun BudgingRoot(
                         navController.popBackStack()
                     },
                     onBack = { navController.popBackStack() },
+                )
+            }
+            composable(Screen.BudgetPeriodList.route) {
+                BudgetPeriodListScreen(
+                    periods = periodListState,
+                    onCreateNext = {
+                        navController.navigate(Screen.CreateNextPeriod.route)
+                    },
+                )
+            }
+            composable(Screen.CreateNextPeriod.route) {
+                val activePeriod = periodListState.firstOrNull { it.isActive }
+                val previousCategories = budgetSetupState.categories
+                val defaultStartDate = activePeriod?.let {
+                    try {
+                        val endDate = java.time.LocalDate.parse(budgetSetupState.endDateText)
+                        endDate.plusDays(1).toString()
+                    } catch (_: Exception) {
+                        java.time.LocalDate.now().plusDays(1).toString()
+                    }
+                } ?: java.time.LocalDate.now().plusDays(1).toString()
+                val defaultEndDate = activePeriod?.let { period ->
+                    try {
+                        val start = java.time.LocalDate.parse(budgetSetupState.startDateText)
+                        val end = java.time.LocalDate.parse(budgetSetupState.endDateText)
+                        val duration = end.toEpochDay() - start.toEpochDay()
+                        val newStart = java.time.LocalDate.parse(defaultStartDate)
+                        newStart.plusDays(duration).toString()
+                    } catch (_: Exception) {
+                        java.time.LocalDate.now().plusWeeks(4).toString()
+                    }
+                } ?: java.time.LocalDate.now().plusWeeks(4).toString()
+
+                CreateNextPeriodScreen(
+                    defaultName = activePeriod?.let { "${it.name} (Next)" } ?: "New Budget",
+                    defaultCurrencyCode = activePeriod?.currencyCode ?: "IDR",
+                    defaultStartDate = defaultStartDate,
+                    defaultEndDate = defaultEndDate,
+                    previousCategories = previousCategories,
+                    pendingImpacts = pendingImpactsState,
+                    activePeriodCurrency = activePeriod?.currencyCode ?: "IDR",
+                    onSave = { name: String, totalAmountMinor: Long, currencyCode: String, startDateText: String, endDateText: String, copyCategoryIds: List<Long>, applyImpactIds: List<Long>, impactCategoryMapping: Map<Long, Long> ->
+                        viewModel.createNextPeriod(
+                            name, totalAmountMinor, currencyCode,
+                            startDateText, endDateText,
+                            copyCategoryIds, applyImpactIds, impactCategoryMapping,
+                        )
+                        navController.popBackStack()
+                    },
                 )
             }
         }
