@@ -84,6 +84,7 @@ fun BudgingRoot(viewModel: BudgingViewModel) {
                     shape = RoundedCornerShape(999.dp),
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.padding(bottom = 8.dp),
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Log expense")
                 }
@@ -96,8 +97,8 @@ fun BudgingRoot(viewModel: BudgingViewModel) {
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.background)
                     .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(horizontal = BudgingTheme.spacing.lg, vertical = BudgingTheme.spacing.md),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                    .padding(horizontal = BudgingTheme.spacing.xl, vertical = BudgingTheme.spacing.md),
+                horizontalArrangement = Arrangement.SpaceAround,
             ) {
                 topLevelDestinations.forEach { item ->
                     BottomNavItemPill(

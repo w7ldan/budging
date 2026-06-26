@@ -49,11 +49,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.budging.app.ui.Screen
+import com.budging.app.ui.theme.AppInkBlue
 import com.budging.app.ui.theme.AppPrimary
 import com.budging.app.ui.theme.AppPrimarySoft
+import com.budging.app.ui.theme.AppSecondary
 import com.budging.app.ui.theme.AppSecondarySoft
 import com.budging.app.ui.theme.AppSuccess
-import com.budging.app.ui.theme.AppSurfaceHigh
 import com.budging.app.ui.theme.AppSurfaceLow
 import com.budging.app.ui.theme.AppWarm
 import com.budging.app.ui.theme.AppWarmSoft
@@ -69,17 +70,17 @@ data class CategoryAccent(
 fun BudgetScaffoldCard(
     modifier: Modifier = Modifier,
     dark: Boolean = false,
-    contentPadding: PaddingValues = PaddingValues(BudgingTheme.spacing.xl),
+    contentPadding: PaddingValues = PaddingValues(BudgingTheme.spacing.lg),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     androidx.compose.material3.Card(
         modifier = modifier,
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (dark) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-            contentColor = if (dark) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+            containerColor = if (dark) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+            contentColor = if (dark) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (dark) 0.dp else 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (dark) 2.dp else 4.dp),
     ) {
         Column(
             modifier = Modifier.padding(contentPadding),
@@ -110,7 +111,7 @@ fun SectionHeader(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Text(title, style = MaterialTheme.typography.headlineMedium)
+                Text(title, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
             }
             if (action != null && onAction != null) {
                 Text(
@@ -156,14 +157,14 @@ fun BudgetProgressBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(10.dp)
+            .height(12.dp)
             .clip(RoundedCornerShape(999.dp))
             .background(trackColor),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth(progress.coerceIn(0f, 1f))
-                .height(10.dp)
+                .height(12.dp)
                 .clip(RoundedCornerShape(999.dp))
                 .background(color),
         )
@@ -200,7 +201,7 @@ fun BottomNavItemPill(
 ) {
     val accent = when (screen) {
         Screen.Dashboard -> AppSecondarySoft
-        Screen.BudgetSetup -> AppSurfaceHigh
+        Screen.BudgetSetup -> MaterialTheme.colorScheme.surfaceVariant
         Screen.LogExpense -> AppWarmSoft
         Screen.Settings -> AppPrimarySoft
         Screen.CategoryDetail -> AppPrimarySoft
@@ -210,7 +211,7 @@ fun BottomNavItemPill(
             .clip(RoundedCornerShape(999.dp))
             .background(if (selected) accent else Color.Transparent)
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
@@ -254,7 +255,7 @@ fun BudgetTopBar(
             } else {
                 Surface(
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surface,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
                     tonalElevation = 0.dp,
                     shadowElevation = 0.dp,
                 ) {
@@ -267,8 +268,10 @@ fun BudgetTopBar(
                 }
             }
             Column {
-                Text("BudgetWise", style = MaterialTheme.typography.titleMedium)
-                Text(title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("BudgetWise", style = MaterialTheme.typography.headlineMedium)
+                if (showBack) {
+                    Text(title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
         IconButton(
@@ -317,13 +320,13 @@ fun categoryAccent(name: String): CategoryAccent {
     val key = name.lowercase()
     return when {
         "food" in key || "restaurant" in key -> CategoryAccent(Icons.Default.Restaurant, AppPrimary, AppSecondarySoft)
-        "transport" in key || "travel" in key -> CategoryAccent(Icons.Default.DirectionsBus, AppPrimary, AppPrimarySoft)
+        "transport" in key || "travel" in key -> CategoryAccent(Icons.Default.DirectionsBus, AppWarm, AppWarmSoft.copy(alpha = 0.6f))
         "gym" in key || "fitness" in key -> CategoryAccent(Icons.Default.FitnessCenter, AppSuccess, AppSuccess.copy(alpha = 0.15f))
         "fun" in key || "entertain" in key -> CategoryAccent(Icons.Default.Celebration, AppWarm, AppWarmSoft)
-        "shopping" in key -> CategoryAccent(Icons.Default.ShoppingBag, AppPrimary, AppPrimarySoft)
+        "shopping" in key -> CategoryAccent(Icons.Default.ShoppingBag, AppInkBlue, AppPrimarySoft)
         "coffee" in key -> CategoryAccent(Icons.Default.LocalCafe, AppWarm, AppWarmSoft)
-        "utility" in key -> CategoryAccent(Icons.Default.Bolt, AppPrimary, AppPrimarySoft)
-        else -> CategoryAccent(Icons.Default.Payments, AppPrimary, AppSurfaceLow)
+        "utility" in key -> CategoryAccent(Icons.Default.Bolt, AppInkBlue, AppPrimarySoft.copy(alpha = 0.6f))
+        else -> CategoryAccent(Icons.Default.Payments, AppSecondary, AppSurfaceLow)
     }
 }
 
