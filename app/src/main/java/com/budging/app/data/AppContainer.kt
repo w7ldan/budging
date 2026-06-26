@@ -10,7 +10,10 @@ class AppContainer(context: Context) {
         context,
         BudgingDatabase::class.java,
         BudgingDatabase.NAME,
-    ).addMigrations(BudgingDatabase.migration1To2).build()
+    ).addMigrations(
+        BudgingDatabase.migration1To2,
+        BudgingDatabase.migration2To3,
+    ).build()
 
     val budgetRepository = BudgetRepository(
         database = database,

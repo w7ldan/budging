@@ -12,6 +12,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,6 +42,23 @@ fun BudgetSetupScreen(
     onDeleteCategory: (categoryId: Long) -> Unit,
 ) {
     val spacing = BudgingTheme.spacing
+    val darkFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = MaterialTheme.colorScheme.onPrimary,
+        unfocusedTextColor = MaterialTheme.colorScheme.onPrimary,
+        focusedContainerColor = MaterialTheme.colorScheme.primary,
+        unfocusedContainerColor = MaterialTheme.colorScheme.primary,
+        focusedBorderColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.35f),
+        unfocusedBorderColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.18f),
+        focusedLabelColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
+        unfocusedLabelColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
+        cursorColor = MaterialTheme.colorScheme.onPrimary,
+        focusedPlaceholderColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.45f),
+        unfocusedPlaceholderColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.45f),
+        focusedPrefixColor = MaterialTheme.colorScheme.onPrimary,
+        unfocusedPrefixColor = MaterialTheme.colorScheme.onPrimary,
+        focusedSupportingTextColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.65f),
+        unfocusedSupportingTextColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.65f),
+    )
     var budgetName by rememberSaveable(state.activePeriodId) { mutableStateOf(state.periodName) }
     var totalAmountText by rememberSaveable(state.activePeriodId) { mutableStateOf(state.totalAmountMinor.takeIf { it > 0 }?.toString().orEmpty()) }
     var currencyCode by rememberSaveable(state.activePeriodId) { mutableStateOf(state.currencyCode) }
@@ -74,6 +92,7 @@ fun BudgetSetupScreen(
                     placeholder = { Text("0") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
+                    colors = darkFieldColors,
                 )
                 OutlinedTextField(
                     value = budgetName,
@@ -81,6 +100,7 @@ fun BudgetSetupScreen(
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Budget Period Name") },
                     singleLine = true,
+                    colors = darkFieldColors,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
                     OutlinedTextField(
@@ -90,6 +110,7 @@ fun BudgetSetupScreen(
                         label = { Text("Start Date") },
                         supportingText = { Text("YYYY-MM-DD") },
                         singleLine = true,
+                        colors = darkFieldColors,
                     )
                     OutlinedTextField(
                         value = endDateText,
@@ -98,6 +119,7 @@ fun BudgetSetupScreen(
                         label = { Text("End Date") },
                         supportingText = { Text("YYYY-MM-DD") },
                         singleLine = true,
+                        colors = darkFieldColors,
                     )
                 }
                 OutlinedTextField(
@@ -106,6 +128,7 @@ fun BudgetSetupScreen(
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Currency") },
                     singleLine = true,
+                    colors = darkFieldColors,
                 )
                 Button(
                     onClick = {
