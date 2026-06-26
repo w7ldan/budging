@@ -1,5 +1,8 @@
 package com.budging.app.ui
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -28,6 +31,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -74,6 +78,18 @@ fun BudgingRoot(
     val snackbarHostState = remember { SnackbarHostState() }
     val currentTopLevelScreen = topLevelDestinations.getOrElse(pagerState.currentPage) { Screen.Dashboard }
 
+    fun openTopLevel(index: Int) {
+        val popped = navController.popBackStack(Screen.Home.route, inclusive = false)
+        if (!popped && destination?.route != Screen.Home.route) {
+            navController.navigate(Screen.Home.route) {
+                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+        scope.launch { pagerState.animateScrollToPage(index) }
+    }
+
     LaunchedEffect(message) {
         message?.let {
             snackbarHostState.showSnackbar(it)
@@ -85,12 +101,7 @@ fun BudgingRoot(
         val route = externalRoute ?: return@LaunchedEffect
         val topLevelIndex = topLevelIndexForRoute(route)
         if (topLevelIndex != null) {
-            navController.navigate(Screen.Home.route) {
-                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                launchSingleTop = true
-                restoreState = true
-            }
-            pagerState.animateScrollToPage(topLevelIndex)
+            openTopLevel(topLevelIndex)
         } else {
             navController.navigate(route) {
                 popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -151,12 +162,7 @@ fun BudgingRoot(
                         screen = item,
                         selected = currentTopLevelScreen.route == item.route,
                         onClick = {
-                            navController.navigate(Screen.Home.route) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                            scope.launch { pagerState.animateScrollToPage(topLevelDestinations.indexOf(item)) }
+                            openTopLevel(topLevelDestinations.indexOf(item))
                         },
                     )
                 }
@@ -167,6 +173,10 @@ fun BudgingRoot(
             navController = navController,
             startDestination = Screen.Home.route,
             modifier = Modifier.padding(innerPadding),
+            enterTransition = { slideIn(this) },
+            exitTransition = { slideOut(this) },
+            popEnterTransition = { slidePopIn(this) },
+            popExitTransition = { slidePopOut(this) },
         ) {
             composable(Screen.Home.route) {
                 HorizontalPager(
@@ -360,3 +370,39 @@ private fun topLevelTitle(screen: Screen): String = when (screen) {
     Screen.Settings -> "Overview"
     else -> "Current Budget"
 }
+
+private fun slideIn(scope: AnimatedContentTransitionScope<NavBackStackEntry>) =
+    with(scope) {
+        slideIntoContainer(
+            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+            animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+            initialOffset = { it / 5 },
+        )
+    }
+
+private fun slideOut(scope: AnimatedContentTransitionScope<NavBackStackEntry>) =
+    with(scope) {
+        slideOutOfContainer(
+            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+            animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+            targetOffset = { -it / 5 },
+        )
+    }
+
+private fun slidePopIn(scope: AnimatedContentTransitionScope<NavBackStackEntry>) =
+    with(scope) {
+        slideIntoContainer(
+            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+            animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+            initialOffset = { -it / 5 },
+        )
+    }
+
+private fun slidePopOut(scope: AnimatedContentTransitionScope<NavBackStackEntry>) =
+    with(scope) {
+        slideOutOfContainer(
+            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+            animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+            targetOffset = { it / 5 },
+        )
+    }

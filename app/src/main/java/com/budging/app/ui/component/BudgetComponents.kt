@@ -50,6 +50,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +60,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.budging.app.ui.Screen
 import com.budging.app.ui.theme.AppPrimarySoft
 import com.budging.app.ui.theme.BudgingTheme
@@ -498,4 +500,99 @@ fun IconDropdownField(
 
 private object MaterialThemeFallback {
     val primaryText = Color(0xFF131B2E)
+}
+
+@Composable
+fun BudgetDialog(
+    title: String,
+    body: String,
+    confirmLabel: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    confirmColor: Color = MaterialTheme.colorScheme.primary,
+    confirmContentColor: Color = MaterialTheme.colorScheme.onPrimary,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Text(title, style = MaterialTheme.typography.titleLarge)
+                Text(body, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End),
+                ) {
+                    TextButton(onClick = onDismiss) { Text("Close") }
+                    androidx.compose.material3.Button(
+                        onClick = onConfirm,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = confirmColor,
+                            contentColor = confirmContentColor,
+                        ),
+                    ) {
+                        Text(confirmLabel)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BudgetConfirmDialog(
+    title: String,
+    body: String,
+    confirmLabel: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    destructive: Boolean = false,
+) {
+    BudgetDialog(
+        title = title,
+        body = body,
+        confirmLabel = confirmLabel,
+        onDismiss = onDismiss,
+        onConfirm = onConfirm,
+        confirmColor = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+        confirmContentColor = if (destructive) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary,
+    )
+}
+
+@Composable
+fun BudgetNoticeDialog(
+    title: String,
+    body: String,
+    onDismiss: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Text(title, style = MaterialTheme.typography.titleLarge)
+                Text(body, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    androidx.compose.material3.Button(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(14.dp),
+                    ) {
+                        Text("OK")
+                    }
+                }
+            }
+        }
+    }
 }

@@ -1,6 +1,7 @@
 package com.budging.app.ui.screen
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -37,6 +38,7 @@ import com.budging.app.data.model.PendingMatchStatus
 import com.budging.app.data.model.RecurringPreviewItem
 import com.budging.app.data.model.RecurringTemplateItem
 import com.budging.app.domain.RecurringExpensePlanner
+import com.budging.app.ui.component.BudgetConfirmDialog
 import com.budging.app.ui.component.BudgetScaffoldCard
 import com.budging.app.ui.component.CategoryIconBubble
 import com.budging.app.ui.component.DateInputRow
@@ -379,14 +381,17 @@ private fun MinimalAmountInput(
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Bottom) {
             Text(currencyCode, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             BasicTextField(
+                modifier = Modifier.fillMaxWidth(),
                 value = value,
                 onValueChange = onValueChange,
                 singleLine = true,
                 textStyle = MaterialTheme.typography.headlineLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 decorationBox = { inner ->
-                    if (value.isBlank()) Text("0", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.outline)
-                    inner()
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        if (value.isBlank()) Text("0", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.outline)
+                        inner()
+                    }
                 },
             )
         }
@@ -406,14 +411,17 @@ private fun MinimalInputRow(
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             BasicTextField(
+                modifier = Modifier.fillMaxWidth(),
                 value = value,
                 onValueChange = onValueChange,
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                 keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
                 decorationBox = { inner ->
-                    if (value.isBlank() && hint.isNotBlank()) Text(hint, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.outline)
-                    inner()
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        if (value.isBlank() && hint.isNotBlank()) Text(hint, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.outline)
+                        inner()
+                    }
                 },
             )
         }

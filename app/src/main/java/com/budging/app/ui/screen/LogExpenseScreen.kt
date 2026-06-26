@@ -247,15 +247,18 @@ private fun CompactInputCard(
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 BasicTextField(
+                    modifier = Modifier.fillMaxWidth(),
                     value = value,
                     onValueChange = onValueChange,
                     singleLine = true,
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                     decorationBox = { inner ->
-                        if (value.isBlank()) {
-                            Text(hint, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.outline)
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            if (value.isBlank()) {
+                                Text(hint, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.outline)
+                            }
+                            inner()
                         }
-                        inner()
                     },
                 )
             }

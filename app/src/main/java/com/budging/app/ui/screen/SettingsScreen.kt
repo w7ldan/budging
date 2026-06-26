@@ -5,7 +5,6 @@ import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
 import android.service.quicksettings.TileService
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -13,13 +12,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,6 +30,8 @@ import com.budging.app.R
 import com.budging.app.quickaccess.QuickAccessUpdater
 import com.budging.app.quicktile.LogExpenseTileService
 import com.budging.app.ui.BackupMessage
+import com.budging.app.ui.component.BudgetConfirmDialog
+import com.budging.app.ui.component.BudgetNoticeDialog
 import com.budging.app.ui.component.BudgetScaffoldCard
 import com.budging.app.ui.component.SectionHeader
 import com.budging.app.ui.theme.BudgingTheme
@@ -52,14 +51,14 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val spacing = BudgingTheme.spacing
     var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
+    var noticeText by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(backupMessage) {
         backupMessage?.let { msg ->
-            val text = when (msg) {
+            noticeText = when (msg) {
                 is BackupMessage.Success -> msg.text
                 is BackupMessage.Error -> msg.text
             }
-            Toast.makeText(context, text, Toast.LENGTH_LONG).show()
             onClearBackupMessage()
         }
     }
@@ -80,24 +79,24 @@ fun SettingsScreen(
         ActivityResultContracts.CreateDocument("text/csv"),
     ) { uri -> uri?.let { onExportCsv(it) } }
 
-    // --- Import confirmation dialog ---
+    noticeText?.let { text ->
+        BudgetNoticeDialog(
+            title = "Budging",
+            body = text,
+            onDismiss = { noticeText = null },
+        )
+    }
+
     pendingImportUri?.let { uri ->
-        AlertDialog(
-            onDismissRequest = { pendingImportUri = null },
-            title = { Text("Restore Backup") },
-            text = { Text("This will replace all current local data with data from the backup file. This cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    onImportJson(uri)
-                    pendingImportUri = null
-                }) {
-                    Text("Replace Data", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingImportUri = null }) {
-                    Text("Cancel")
-                }
+        BudgetConfirmDialog(
+            title = "Restore Backup",
+            body = "This will replace all current local data with data from the backup file. This cannot be undone.",
+            confirmLabel = "Replace Data",
+            destructive = true,
+            onDismiss = { pendingImportUri = null },
+            onConfirm = {
+                onImportJson(uri)
+                pendingImportUri = null
             },
         )
     }
@@ -145,7 +144,7 @@ fun SettingsScreen(
                         onClick = {
                             val manager = context.getSystemService(android.app.StatusBarManager::class.java)
                             if (manager == null) {
-                                Toast.makeText(context, "Status bar service unavailable on this device.", Toast.LENGTH_SHORT).show()
+                                noticeText = "Status bar service unavailable on this device."
                                 return@Button
                             }
                             try {
@@ -165,10 +164,10 @@ fun SettingsScreen(
                                             "Tile add was denied"
                                         else -> "Could not add tile (result: $resultCode)"
                                     }
-                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                    noticeText = msg
                                 }
                             } catch (_: Exception) {
-                                Toast.makeText(context, "This device does not support adding tiles from the app. Open Quick Settings edit mode, find Log Expense under apps, then drag it into active tiles.", Toast.LENGTH_LONG).show()
+                                noticeText = "This device does not support adding tiles from the app. Open Quick Settings edit mode, find Log Expense under apps, then drag it into active tiles."
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -184,7 +183,7 @@ fun SettingsScreen(
                             try {
                                 TileService.requestListeningState(context, ComponentName(context, LogExpenseTileService::class.java))
                             } catch (_: Exception) { /* best effort */ }
-                            Toast.makeText(context, "Open Quick Settings edit mode, find Log Expense under apps, then drag it into active tiles.", Toast.LENGTH_LONG).show()
+                            noticeText = "Open Quick Settings edit mode, find Log Expense under apps, then drag it into active tiles."
                         },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
@@ -196,7 +195,7 @@ fun SettingsScreen(
                     onClick = {
                         scope.launch {
                             QuickAccessUpdater.refresh(context)
-                            Toast.makeText(context, "Widget refreshed", Toast.LENGTH_SHORT).show()
+                            noticeText = "Widget refreshed"
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
