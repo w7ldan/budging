@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Budging</string>
+    <string name="widget_description">Your remaining budget, always on your home screen. Tap to open Budging, or use the Log button to quickly add an expense.</string>
 </resources>

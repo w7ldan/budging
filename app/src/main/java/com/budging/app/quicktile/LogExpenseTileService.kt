@@ -18,6 +18,11 @@ import kotlinx.coroutines.withContext
 class LogExpenseTileService : TileService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    override fun onTileAdded() {
+        super.onTileAdded()
+        serviceScope.launch { updateTileState() }
+    }
+
     override fun onStartListening() {
         super.onStartListening()
         serviceScope.launch { updateTileState() }
