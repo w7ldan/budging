@@ -1,20 +1,28 @@
 package com.budging.app.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -27,8 +35,11 @@ import com.budging.app.ui.screen.CategoryDetailScreen
 import com.budging.app.ui.screen.DashboardScreen
 import com.budging.app.ui.screen.LogExpenseScreen
 import com.budging.app.ui.screen.SettingsScreen
+import com.budging.app.ui.component.BottomNavItemPill
+import com.budging.app.ui.component.BudgetTopBar
+import com.budging.app.ui.theme.BudgingTheme
+import androidx.compose.material3.MaterialTheme
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BudgingRoot(viewModel: BudgingViewModel) {
     val navController = rememberNavController()
@@ -50,17 +61,19 @@ fun BudgingRoot(viewModel: BudgingViewModel) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        when (destination?.route) {
-                            Screen.BudgetSetup.route -> "Set Budget"
-                            Screen.LogExpense.route -> "Log Expense"
-                            Screen.CategoryDetail.route -> "Category Detail"
-                            Screen.Settings.route -> "Settings"
-                            else -> "Budging"
-                        },
-                    )
+            BudgetTopBar(
+                title = when (destination?.route) {
+                    Screen.BudgetSetup.route -> "Set Budget"
+                    Screen.LogExpense.route -> "Log Expense"
+                    Screen.CategoryDetail.route -> "Category Detail"
+                    Screen.Settings.route -> "Overview"
+                    else -> "Current Budget"
+                },
+                showBack = destination?.route == Screen.CategoryDetail.route,
+                onBack = {
+                    if (navController.previousBackStackEntry != null) {
+                        navController.popBackStack()
+                    }
                 },
             )
         },
@@ -68,16 +81,27 @@ fun BudgingRoot(viewModel: BudgingViewModel) {
             if (destination?.route == Screen.Dashboard.route) {
                 FloatingActionButton(
                     onClick = { navController.navigate(Screen.LogExpense.route) },
+                    shape = RoundedCornerShape(999.dp),
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                 ) {
-                    Text("+")
+                    Icon(Icons.Default.Add, contentDescription = "Log expense")
                 }
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            NavigationBar {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(horizontal = BudgingTheme.spacing.lg, vertical = BudgingTheme.spacing.md),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
                 topLevelDestinations.forEach { item ->
-                    NavigationBarItem(
+                    BottomNavItemPill(
+                        screen = item,
                         selected = destination?.hierarchy?.any { it.route == item.route } == true,
                         onClick = {
                             navController.navigate(item.route) {
@@ -88,8 +112,6 @@ fun BudgingRoot(viewModel: BudgingViewModel) {
                                 restoreState = true
                             }
                         },
-                        label = { Text(item.label) },
-                        icon = {},
                     )
                 }
             }
@@ -98,7 +120,9 @@ fun BudgingRoot(viewModel: BudgingViewModel) {
         NavHost(
             navController = navController,
             startDestination = Screen.Dashboard.route,
-            modifier = Modifier.padding(innerPadding),
+            modifier = Modifier
+                .padding(innerPadding)
+                .windowInsetsPadding(WindowInsets.statusBars),
         ) {
             composable(Screen.Dashboard.route) {
                 DashboardScreen(

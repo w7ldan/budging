@@ -1,16 +1,23 @@
 package com.budging.app.ui.screen
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -19,19 +26,28 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import com.budging.app.data.model.ExpenseEntryState
+import com.budging.app.ui.component.BudgetChip
+import com.budging.app.ui.component.BudgetScaffoldCard
+import com.budging.app.ui.component.SectionHeader
+import com.budging.app.ui.component.categoryAccent
 import com.budging.app.ui.format.formatCurrency
+import com.budging.app.ui.theme.BudgingTheme
 import java.time.LocalDate
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
 
 @Composable
 fun LogExpenseScreen(
     state: ExpenseEntryState,
     onSaveExpense: (amountMinor: Long, categoryId: Long, dateText: String, note: String) -> Unit,
 ) {
+    val spacing = BudgingTheme.spacing
     var amountText by rememberSaveable { mutableStateOf("") }
     var selectedCategoryId by rememberSaveable(state.budgetName, state.categories.firstOrNull()?.id) {
         mutableStateOf<Long?>(state.categories.firstOrNull()?.id)
@@ -43,102 +59,138 @@ fun LogExpenseScreen(
     val predictedRemaining = selectedCategory?.remainingAmountMinor?.minus(amountText.toLongOrNull() ?: 0L)
 
     LazyColumn(
-        modifier = Modifier.padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.padding(horizontal = spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
-        item {
-            Text("Log Expense", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        }
+        item { SectionHeader(eyebrow = "Expense", title = "Log Expense") }
         if (!state.hasActiveBudget) {
             item {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text("No active budget", style = MaterialTheme.typography.titleLarge)
-                        Text("Create a budget period first, then come back to log expenses.")
-                    }
+                BudgetScaffoldCard {
+                    Text("No active budget", style = MaterialTheme.typography.titleLarge)
+                    Text("Create a budget period first, then come back to log expenses.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             return@LazyColumn
         }
         item {
-            Card(modifier = Modifier.fillMaxWidth()) {
+            BudgetScaffoldCard {
                 Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(spacing.sm),
                 ) {
-                    Text(state.budgetName, style = MaterialTheme.typography.titleMedium)
+                    Text("Enter Amount", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
                         formatCurrency(amountText.toLongOrNull() ?: 0L, state.currencyCode),
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.displayLarge,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
                     )
-                    Text(state.dateRangeLabel, style = MaterialTheme.typography.bodyMedium)
+                    Text(state.dateRangeLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
         item {
-            Text("Choose Category", style = MaterialTheme.typography.titleMedium)
-        }
-        item {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(state.categories) { category ->
-                    FilterChip(
-                        selected = selectedCategoryId == category.id,
-                        onClick = { selectedCategoryId = category.id },
-                        label = { Text(category.name) },
-                    )
+            Column(verticalArrangement = Arrangement.spacedBy(spacing.md)) {
+                Text("Choose Category", style = MaterialTheme.typography.titleMedium)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                    items(state.categories) { category ->
+                        BudgetChip(
+                            selected = selectedCategoryId == category.id,
+                            label = category.name,
+                            icon = categoryAccent(category.name).icon,
+                            onClick = { selectedCategoryId = category.id },
+                        )
+                    }
                 }
             }
         }
         item {
-            OutlinedTextField(
-                value = dateText,
-                onValueChange = { dateText = it },
-                label = { Text("Expense Date") },
-                supportingText = { Text("YYYY-MM-DD") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
+            BudgetScaffoldCard {
+                Row(horizontalArrangement = Arrangement.spacedBy(spacing.md), verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .padding(horizontal = spacing.md, vertical = spacing.lg),
+                        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Outlined.CalendarToday, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Column {
+                            Text("Date", style = MaterialTheme.typography.labelMedium)
+                            Text(dateText, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .padding(horizontal = spacing.md, vertical = spacing.lg),
+                        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Outlined.EditNote, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Column {
+                            Text("Note", style = MaterialTheme.typography.labelMedium)
+                            Text(if (noteText.isBlank()) "Optional" else noteText, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = dateText,
+                    onValueChange = { dateText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Expense Date") },
+                    supportingText = { Text("YYYY-MM-DD") },
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = noteText,
+                    onValueChange = { noteText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Note") },
+                    singleLine = true,
+                )
+            }
         }
         item {
-            OutlinedTextField(
-                value = noteText,
-                onValueChange = { noteText = it },
-                label = { Text("Note") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 2,
-            )
-        }
-        item {
-            Keypad(
-                onDigit = { digit -> amountText += digit },
-                onDelete = {
-                    amountText = if (amountText.isNotEmpty()) amountText.dropLast(1) else ""
-                },
-                onClear = { amountText = "" },
-            )
+            BudgetScaffoldCard {
+                Keypad(
+                    onDigit = { digit -> amountText += digit },
+                    onDelete = { amountText = if (amountText.isNotEmpty()) amountText.dropLast(1) else "" },
+                    onClear = { amountText = "" },
+                )
+            }
         }
         item {
             Button(
                 onClick = {
-                    onSaveExpense(
-                        amountText.toLongOrNull() ?: 0L,
-                        selectedCategoryId ?: 0L,
-                        dateText,
-                        noteText,
-                    )
+                    onSaveExpense(amountText.toLongOrNull() ?: 0L, selectedCategoryId ?: 0L, dateText, noteText)
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(68.dp),
+                shape = RoundedCornerShape(22.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
             ) {
-                val label = if (predictedRemaining != null) {
-                    "Confirm - ${selectedCategory?.name.orEmpty()} left ${formatCurrency(predictedRemaining, state.currencyCode)}"
-                } else {
-                    "Confirm Expense"
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Confirm", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        if (predictedRemaining != null) {
+                            "${selectedCategory?.name.orEmpty()} left ${formatCurrency(predictedRemaining, state.currencyCode)}"
+                        } else {
+                            "Choose a category to continue"
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.82f),
+                    )
                 }
-                Text(label, textAlign = TextAlign.Center)
             }
         }
     }
@@ -150,6 +202,7 @@ private fun Keypad(
     onDelete: () -> Unit,
     onClear: () -> Unit,
 ) {
+    val spacing = BudgingTheme.spacing
     val rows = listOf(
         listOf("1", "2", "3"),
         listOf("4", "5", "6"),
@@ -157,29 +210,39 @@ private fun Keypad(
         listOf("000", "0", "Del"),
     )
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.md)) {
         rows.forEach { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
                 row.forEach { key ->
-                    Button(
-                        onClick = {
-                            when (key) {
-                                "Del" -> onDelete()
-                                else -> onDigit(key)
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(58.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .padding(vertical = spacing.md)
+                            .clickable {
+                                when (key) {
+                                    "Del" -> onDelete()
+                                    else -> onDigit(key)
+                                }
+                            },
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Text(key)
+                        Text(key, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
         }
-        Button(onClick = onClear, modifier = Modifier.fillMaxWidth()) {
-            Text("Clear")
-        }
+        Text(
+            "Clear",
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .clip(RoundedCornerShape(999.dp))
+                .clickable(onClick = onClear)
+                .padding(horizontal = spacing.md, vertical = spacing.sm),
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.labelLarge,
+        )
     }
 }

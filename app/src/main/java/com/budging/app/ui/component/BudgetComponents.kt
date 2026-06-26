@@ -1,0 +1,336 @@
+package com.budging.app.ui.component
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Celebration
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.LocalCafe
+import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.SettingsSuggest
+import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.budging.app.ui.Screen
+import com.budging.app.ui.theme.AppPrimary
+import com.budging.app.ui.theme.AppPrimarySoft
+import com.budging.app.ui.theme.AppSecondarySoft
+import com.budging.app.ui.theme.AppSuccess
+import com.budging.app.ui.theme.AppSurfaceHigh
+import com.budging.app.ui.theme.AppSurfaceLow
+import com.budging.app.ui.theme.AppWarm
+import com.budging.app.ui.theme.AppWarmSoft
+import com.budging.app.ui.theme.BudgingTheme
+
+data class CategoryAccent(
+    val icon: ImageVector,
+    val tint: Color,
+    val background: Color,
+)
+
+@Composable
+fun BudgetScaffoldCard(
+    modifier: Modifier = Modifier,
+    dark: Boolean = false,
+    contentPadding: PaddingValues = PaddingValues(BudgingTheme.spacing.xl),
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    androidx.compose.material3.Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (dark) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+            contentColor = if (dark) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (dark) 0.dp else 2.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(contentPadding),
+            verticalArrangement = Arrangement.spacedBy(BudgingTheme.spacing.md),
+            content = content,
+        )
+    }
+}
+
+@Composable
+fun SectionHeader(
+    eyebrow: String? = null,
+    title: String,
+    action: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(BudgingTheme.spacing.xs)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                eyebrow?.let {
+                    Text(
+                        it.uppercase(),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(title, style = MaterialTheme.typography.headlineMedium)
+            }
+            if (action != null && onAction != null) {
+                Text(
+                    action,
+                    modifier = Modifier.clip(RoundedCornerShape(999.dp)).clickable { onAction() }.padding(8.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun BudgetMetricRow(
+    label: String,
+    value: String,
+    strong: Boolean = false,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            value,
+            style = if (strong) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
+            fontWeight = if (strong) FontWeight.SemiBold else FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+fun BudgetProgressBar(
+    progress: Float,
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.primary,
+    trackColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(10.dp)
+            .clip(RoundedCornerShape(999.dp))
+            .background(trackColor),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(progress.coerceIn(0f, 1f))
+                .height(10.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(color),
+        )
+    }
+}
+
+@Composable
+fun CategoryIconBubble(
+    categoryName: String,
+    modifier: Modifier = Modifier,
+    accent: CategoryAccent = categoryAccent(categoryName),
+) {
+    Box(
+        modifier = modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(accent.background),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = accent.icon,
+            contentDescription = null,
+            tint = accent.tint,
+            modifier = Modifier.size(22.dp),
+        )
+    }
+}
+
+@Composable
+fun BottomNavItemPill(
+    screen: Screen,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val accent = when (screen) {
+        Screen.Dashboard -> AppSecondarySoft
+        Screen.BudgetSetup -> AppSurfaceHigh
+        Screen.LogExpense -> AppWarmSoft
+        Screen.Settings -> AppPrimarySoft
+        Screen.CategoryDetail -> AppPrimarySoft
+    }
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(if (selected) accent else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Icon(
+            imageVector = screenIcon(screen),
+            contentDescription = screen.label,
+            tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            screen.label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+fun BudgetTopBar(
+    title: String,
+    showBack: Boolean,
+    onBack: (() -> Unit)? = null,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = BudgingTheme.spacing.xl, vertical = BudgingTheme.spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (showBack && onBack != null) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), CircleShape),
+                ) {
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                }
+            } else {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AccountCircle,
+                        contentDescription = null,
+                        modifier = Modifier.padding(6.dp).size(28.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+            Column {
+                Text("BudgetWise", style = MaterialTheme.typography.titleMedium)
+                Text(title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        IconButton(
+            onClick = {},
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surface),
+        ) {
+            Icon(Icons.Default.NotificationsNone, contentDescription = "Alerts")
+        }
+    }
+}
+
+@Composable
+fun BudgetChip(
+    selected: Boolean,
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label, maxLines = 1) },
+        leadingIcon = {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+        },
+        colors = FilterChipDefaults.filterChipColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            selectedContainerColor = AppSecondarySoft,
+            labelColor = MaterialTheme.colorScheme.onSurface,
+            selectedLabelColor = MaterialTheme.colorScheme.primary,
+            iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            selectedLeadingIconColor = MaterialTheme.colorScheme.primary,
+        ),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = selected,
+            borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+            selectedBorderColor = Color.Transparent,
+        ),
+    )
+}
+
+fun categoryAccent(name: String): CategoryAccent {
+    val key = name.lowercase()
+    return when {
+        "food" in key || "restaurant" in key -> CategoryAccent(Icons.Default.Restaurant, AppPrimary, AppSecondarySoft)
+        "transport" in key || "travel" in key -> CategoryAccent(Icons.Default.DirectionsBus, AppPrimary, AppPrimarySoft)
+        "gym" in key || "fitness" in key -> CategoryAccent(Icons.Default.FitnessCenter, AppSuccess, AppSuccess.copy(alpha = 0.15f))
+        "fun" in key || "entertain" in key -> CategoryAccent(Icons.Default.Celebration, AppWarm, AppWarmSoft)
+        "shopping" in key -> CategoryAccent(Icons.Default.ShoppingBag, AppPrimary, AppPrimarySoft)
+        "coffee" in key -> CategoryAccent(Icons.Default.LocalCafe, AppWarm, AppWarmSoft)
+        "utility" in key -> CategoryAccent(Icons.Default.Bolt, AppPrimary, AppPrimarySoft)
+        else -> CategoryAccent(Icons.Default.Payments, AppPrimary, AppSurfaceLow)
+    }
+}
+
+private fun screenIcon(screen: Screen): ImageVector = when (screen) {
+    Screen.Dashboard -> Icons.Default.Dashboard
+    Screen.BudgetSetup -> Icons.Default.SettingsSuggest
+    Screen.LogExpense -> Icons.Default.Add
+    Screen.Settings -> Icons.Default.EditNote
+    Screen.CategoryDetail -> Icons.Default.EditNote
+}

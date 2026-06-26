@@ -8,29 +8,35 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.budging.app.data.model.CategoryDetailState
+import com.budging.app.ui.component.BudgetMetricRow
+import com.budging.app.ui.component.BudgetProgressBar
+import com.budging.app.ui.component.BudgetScaffoldCard
+import com.budging.app.ui.component.CategoryIconBubble
+import com.budging.app.ui.component.SectionHeader
 import com.budging.app.ui.format.formatCurrency
+import com.budging.app.ui.theme.BudgingTheme
 
 @Composable
 fun CategoryDetailScreen(
     state: CategoryDetailState?,
     onDeleteTransaction: (Long) -> Unit,
 ) {
+    val spacing = BudgingTheme.spacing
     if (state == null) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
             Text("Category Detail", style = MaterialTheme.typography.headlineMedium)
             Text("Open a category from the dashboard to load its spending history.")
@@ -39,81 +45,79 @@ fun CategoryDetailScreen(
     }
 
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.padding(horizontal = spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
         item {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+            BudgetScaffoldCard(dark = true) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top,
                 ) {
-                    Text(state.categoryName, style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        formatCurrency(state.remainingAmountMinor, state.currencyCode),
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text("Remaining for this budget period")
-                    LinearProgressIndicator(
-                        progress = {
-                            categoryProgress(state.spentAmountMinor, state.allocatedAmountMinor)
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    MetricRow("Allocated", formatCurrency(state.allocatedAmountMinor, state.currencyCode))
-                    MetricRow("Spent", formatCurrency(state.spentAmountMinor, state.currencyCode))
+                    Row(horizontalArrangement = Arrangement.spacedBy(spacing.md), verticalAlignment = Alignment.CenterVertically) {
+                        CategoryIconBubble(state.categoryName)
+                        Column {
+                            Text(state.categoryName, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimary)
+                            Text("Remaining for this budget period", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.78f))
+                        }
+                    }
                 }
+                Text(
+                    formatCurrency(state.remainingAmountMinor, state.currencyCode),
+                    style = MaterialTheme.typography.displayLarge,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                )
+                BudgetProgressBar(
+                    progress = categoryProgress(state.spentAmountMinor, state.allocatedAmountMinor),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    trackColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.12f),
+                )
+                BudgetMetricRow("Allocated", formatCurrency(state.allocatedAmountMinor, state.currencyCode))
+                BudgetMetricRow("Spent", formatCurrency(state.spentAmountMinor, state.currencyCode))
             }
         }
-        item {
-            Text("Recent Transactions", style = MaterialTheme.typography.titleLarge)
-        }
+        item { SectionHeader(title = "Recent Transactions") }
         if (state.transactions.isEmpty()) {
             item {
-                Text("No expenses in this category yet.")
+                BudgetScaffoldCard {
+                    Text("No expenses in this category yet.", style = MaterialTheme.typography.titleMedium)
+                    Text("Once you log spending here, it will appear in this list.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         } else {
             items(state.transactions) { transaction ->
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                BudgetScaffoldCard {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text(transaction.title, style = MaterialTheme.typography.titleMedium)
-                            Text(formatCurrency(transaction.amountMinor, state.currencyCode))
+                        Row(horizontalArrangement = Arrangement.spacedBy(spacing.md), verticalAlignment = Alignment.CenterVertically) {
+                            CategoryIconBubble(transaction.title)
+                            Column {
+                                Text(transaction.title, style = MaterialTheme.typography.titleMedium)
+                                Text(transaction.note ?: transaction.paidDateLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                if (transaction.note != null) {
+                                    Text(transaction.paidDateLabel, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
                         }
-                        transaction.note?.takeIf { it.isNotBlank() }?.let {
-                            Text(it, style = MaterialTheme.typography.bodyMedium)
-                        }
-                        Text(transaction.paidDateLabel, style = MaterialTheme.typography.labelMedium)
-                        TextButton(
-                            onClick = { onDeleteTransaction(transaction.id) },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text("Delete Transaction")
-                        }
+                        Text(
+                            formatCurrency(transaction.amountMinor, state.currencyCode),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                    TextButton(
+                        onClick = { onDeleteTransaction(transaction.id) },
+                        modifier = Modifier.align(Alignment.End),
+                    ) {
+                        Text("Delete")
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun MetricRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(label)
-        Text(value, fontWeight = FontWeight.Medium)
     }
 }
 
