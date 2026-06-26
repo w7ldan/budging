@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -35,6 +34,7 @@ import com.budging.app.data.model.ExpenseCategoryOption
 import com.budging.app.data.model.TransactionDetailState
 import com.budging.app.ui.component.BudgetChip
 import com.budging.app.ui.component.BudgetScaffoldCard
+import com.budging.app.ui.component.DateInputRow
 import com.budging.app.ui.component.Keypad
 import com.budging.app.ui.component.SectionHeader
 import com.budging.app.ui.component.categoryIcon
@@ -122,14 +122,7 @@ fun EditTransactionScreen(
         // Date and Note inputs
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(spacing.md), verticalAlignment = Alignment.CenterVertically) {
-                CompactInputCard(
-                    modifier = Modifier.weight(1f),
-                    icon = { Icon(Icons.Outlined.CalendarToday, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                    label = "Date",
-                    value = dateText,
-                    hint = "YYYY-MM-DD",
-                    onValueChange = { dateText = it },
-                )
+                DateInputRow("Date", dateText, Modifier.weight(1f)) { dateText = it }
                 CompactInputCard(
                     modifier = Modifier.weight(1f),
                     icon = { Icon(Icons.Outlined.EditNote, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },

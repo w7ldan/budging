@@ -39,6 +39,7 @@ import com.budging.app.data.model.RecurringTemplateItem
 import com.budging.app.domain.RecurringExpensePlanner
 import com.budging.app.ui.component.BudgetScaffoldCard
 import com.budging.app.ui.component.CategoryIconBubble
+import com.budging.app.ui.component.DateInputRow
 import com.budging.app.ui.component.SectionHeader
 import com.budging.app.ui.format.formatCurrency
 import com.budging.app.ui.theme.BudgingTheme
@@ -146,8 +147,8 @@ fun CreateNextPeriodScreen(
                 MinimalAmountInput(currency, totalAmountText) { totalAmountText = it.filter(Char::isDigit) }
                 MinimalInputRow("Period Name", budgetName, modifier = Modifier.fillMaxWidth()) { budgetName = it }
                 Row(horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
-                    MinimalInputRow("Start Date", startDateText, "YYYY-MM-DD", Modifier.weight(1f)) { startDateText = it }
-                    MinimalInputRow("End Date", endDateText, "YYYY-MM-DD", Modifier.weight(1f)) { endDateText = it }
+                    DateInputRow("Start Date", startDateText, Modifier.weight(1f)) { startDateText = it }
+                    DateInputRow("End Date", endDateText, Modifier.weight(1f)) { endDateText = it }
                 }
                 MinimalInputRow("Currency", currencyCode, modifier = Modifier.fillMaxWidth()) { currencyCode = it.uppercase().take(3) }
                 Text("Budget: ${formatCurrency(totalForPreview, currency)}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)

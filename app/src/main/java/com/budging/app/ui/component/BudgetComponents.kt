@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Celebration
@@ -38,6 +39,10 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -55,11 +60,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.budging.app.ui.Screen
-import com.budging.app.ui.theme.AppDangerSoft
 import com.budging.app.ui.theme.AppPrimarySoft
-import com.budging.app.ui.theme.AppSuccessSoft
-import com.budging.app.ui.theme.AppWarmSoft
 import com.budging.app.ui.theme.BudgingTheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 
 data class CategoryAccent(
     val icon: ImageVector,
@@ -341,16 +347,11 @@ fun BudgetChip(
 fun categoryAccent(name: String, iconKey: String? = null): CategoryAccent {
     val resolvedKey = resolveCategoryIconKey(name, iconKey)
     val icon = categoryIcon(resolvedKey)
-    val (background, tint) = when (resolvedKey) {
-        "food", "coffee" -> AppWarmSoft to MaterialThemeFallback.warmText
-        "transport", "travel" -> AppPrimarySoft to MaterialThemeFallback.primaryText
-        "home", "shopping", "education" -> MaterialThemeFallback.selectedContainer to MaterialThemeFallback.selectedContent
-        "utilities", "savings" -> AppSuccessSoft to MaterialThemeFallback.successText
-        "fun" -> AppDangerSoft to MaterialThemeFallback.dangerText
-        "health", "gym" -> AppSuccessSoft to MaterialThemeFallback.successText
-        else -> MaterialThemeFallback.neutralContainer to MaterialThemeFallback.neutralContent
-    }
-    return CategoryAccent(icon = icon, tint = tint, background = background)
+    return CategoryAccent(
+        icon = icon,
+        tint = MaterialThemeFallback.primaryText,
+        background = AppPrimarySoft,
+    )
 }
 
 fun categoryIcon(key: String?): ImageVector =
@@ -438,13 +439,63 @@ private fun screenIcon(screen: Screen, selected: Boolean): ImageVector = when (s
     else -> Icons.Filled.Settings
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun IconDropdownField(
+    label: String,
+    selectedIconKey: String,
+    modifier: Modifier = Modifier,
+    onSelect: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selected = allCategoryIconOptions().firstOrNull { it.key == selectedIconKey } ?: allCategoryIconOptions().last()
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = modifier,
+    ) {
+        Surface(
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+                .clickable { expanded = true },
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            shape = RoundedCornerShape(14.dp),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    CategoryIconBubble(selected.label, iconKey = selected.key, modifier = Modifier.size(34.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(selected.label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+                Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            allCategoryIconOptions().forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.label) },
+                    leadingIcon = { Icon(option.icon, contentDescription = null) },
+                    onClick = {
+                        onSelect(option.key)
+                        expanded = false
+                    },
+                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                )
+            }
+        }
+    }
+}
+
 private object MaterialThemeFallback {
-    val selectedContainer = Color(0xFFD0E1FB)
-    val selectedContent = Color(0xFF000000)
-    val neutralContainer = Color(0xFFE4E2E4)
-    val neutralContent = Color(0xFF1B1B1D)
     val primaryText = Color(0xFF131B2E)
-    val successText = Color(0xFF1E5E43)
-    val warmText = Color(0xFF614B24)
-    val dangerText = Color(0xFF8B120F)
 }

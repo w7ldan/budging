@@ -45,17 +45,16 @@ import com.budging.app.quickaccess.OpenLogExpenseActivity
 import com.budging.app.ui.format.formatCurrency
 import kotlin.math.roundToInt
 
-private fun widgetColor(color: Color) = ColorProvider(day = color, night = color)
+private fun widgetColor(day: Color, night: Color = day) = ColorProvider(day = day, night = night)
 
-private val WidgetOuter = widgetColor(Color(0xFFFCF8FA))
-private val WidgetSurface = widgetColor(Color(0xFFFFFFFF))
-private val WidgetSurfaceAlt = widgetColor(Color(0xFFF6F3F5))
-private val WidgetSurfaceStrong = widgetColor(Color(0xFFEAE7E9))
-private val WidgetText = widgetColor(Color(0xFF1B1B1D))
-private val WidgetMutedText = widgetColor(Color(0xFF45464D))
-private val WidgetAccent = widgetColor(Color(0xFF000000))
-private val WidgetAccentSoft = widgetColor(Color(0xFFD0E1FB))
-private val WidgetAccentOnSoft = widgetColor(Color(0xFF000000))
+private val WidgetSurface = widgetColor(Color(0xFFFFFFFF), Color(0xFF171C24))
+private val WidgetSurfaceAlt = widgetColor(Color(0xFFF6F3F5), Color(0xFF232A35))
+private val WidgetSurfaceStrong = widgetColor(Color(0xFFE4E2E4), Color(0xFF2E3744))
+private val WidgetText = widgetColor(Color(0xFF1B1B1D), Color(0xFFF2F5FA))
+private val WidgetMutedText = widgetColor(Color(0xFF45464D), Color(0xFFBEC6D3))
+private val WidgetAccent = widgetColor(Color(0xFF31578C), Color(0xFFDAE6FF))
+private val WidgetAccentSoft = widgetColor(Color(0xFFDAE6FF), Color(0xFF2B3747))
+private val WidgetAccentOnSoft = widgetColor(Color(0xFF131B2E), Color(0xFFE3ECFF))
 
 class BudgingStatusWidget : GlanceAppWidget() {
     override val sizeMode: SizeMode = SizeMode.Exact
@@ -79,107 +78,99 @@ class BudgingStatusWidgetReceiver : GlanceAppWidgetReceiver() {
 @Composable
 private fun WidgetContent(
     state: DashboardState,
-    containerWidth: androidx.compose.ui.unit.Dp,
+    containerWidth: Dp,
 ) {
     val compactButtons = containerWidth < 250.dp
     val progress = widgetProgress(state)
     val progressWidth = (containerWidth - if (compactButtons) 132.dp else 140.dp).coerceAtLeast(116.dp)
 
-    Box(
+    Row(
         modifier = GlanceModifier
             .fillMaxSize()
             .appWidgetBackground()
-            .background(WidgetOuter)
-            .padding(10.dp),
-        contentAlignment = Alignment.Center,
+            .cornerRadius(32.dp)
+            .background(WidgetSurface)
+            .clickable(actionStartActivity(OpenDashboardActivity::class.java))
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.Vertical.CenterVertically,
     ) {
-        Row(
-            modifier = GlanceModifier
-                .fillMaxSize()
-                .cornerRadius(28.dp)
-                .background(WidgetSurface)
-                .clickable(actionStartActivity(OpenDashboardActivity::class.java))
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.Vertical.CenterVertically,
+        Column(
+            modifier = GlanceModifier.defaultWeight().fillMaxHeight(),
+            verticalAlignment = Alignment.Vertical.Top,
+            horizontalAlignment = Alignment.Horizontal.Start,
         ) {
-            Column(
-                modifier = GlanceModifier.defaultWeight().fillMaxHeight(),
-                verticalAlignment = Alignment.Vertical.Top,
-                horizontalAlignment = Alignment.Horizontal.Start,
-            ) {
-                if (state.hasActiveBudget) {
-                    Text(
-                        text = "TOTAL REMAINING",
-                        style = TextStyle(
-                            color = WidgetMutedText,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                        ),
-                    )
-                    Spacer(GlanceModifier.height(8.dp))
-                    Text(
-                        text = formatCurrency(state.totalRemainingMinor, state.currencyCode),
-                        style = TextStyle(
-                            color = WidgetText,
-                            fontSize = if (containerWidth < 280.dp) 24.sp else 28.sp,
-                            fontWeight = FontWeight.Bold,
-                        ),
-                        maxLines = 2,
-                    )
-                    Spacer(GlanceModifier.defaultWeight())
-                    ProgressLabels(
-                        left = "${progress.spentPercent}% spent",
-                        right = "${progress.leftPercent}% left",
-                    )
-                    Spacer(GlanceModifier.height(8.dp))
-                    ProgressBar(progress.fillFraction, progressWidth)
-                } else {
-                    Text(
-                        text = "NO ACTIVE BUDGET",
-                        style = TextStyle(
-                            color = WidgetText,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                        ),
-                    )
-                    Spacer(GlanceModifier.height(8.dp))
-                    Text(
-                        text = "Tap to set budget",
-                        style = TextStyle(
-                            color = WidgetMutedText,
-                            fontSize = 13.sp,
-                        ),
-                    )
-                    Spacer(GlanceModifier.defaultWeight())
-                    ProgressLabels(left = "0% spent", right = "0% left")
-                    Spacer(GlanceModifier.height(8.dp))
-                    ProgressBar(0f, progressWidth)
-                }
-            }
-
-            Spacer(GlanceModifier.width(14.dp))
-
-            Column(
-                modifier = GlanceModifier.width(if (compactButtons) 88.dp else 96.dp),
-                verticalAlignment = Alignment.Vertical.CenterVertically,
-                horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
-            ) {
-                ActionCard(
-                    iconRes = R.drawable.ic_tile_log_expense,
-                    label = "Log\nExpense",
-                    onClick = actionStartActivity(OpenLogExpenseActivity::class.java),
-                    fill = WidgetAccentSoft,
-                    content = WidgetAccentOnSoft,
+            if (state.hasActiveBudget) {
+                Text(
+                    text = "TOTAL REMAINING",
+                    style = TextStyle(
+                        color = WidgetMutedText,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                    ),
                 )
-                Spacer(GlanceModifier.height(10.dp))
-                ActionCard(
-                    iconRes = R.drawable.ic_widget_details,
-                    label = if (state.hasActiveBudget) "View\nDetails" else "Set\nBudget",
-                    onClick = actionStartActivity(if (state.hasActiveBudget) OpenHistoryActivity::class.java else OpenDashboardActivity::class.java),
-                    fill = WidgetSurfaceAlt,
-                    content = WidgetText,
+                Spacer(GlanceModifier.height(8.dp))
+                Text(
+                    text = formatCurrency(state.totalRemainingMinor, state.currencyCode),
+                    style = TextStyle(
+                        color = WidgetText,
+                        fontSize = if (containerWidth < 280.dp) 24.sp else 28.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    maxLines = 2,
                 )
+                Spacer(GlanceModifier.defaultWeight())
+                ProgressLabels(
+                    left = "${progress.spentPercent}% spent",
+                    right = "${progress.leftPercent}% left",
+                )
+                Spacer(GlanceModifier.height(8.dp))
+                ProgressBar(progress.fillFraction, progressWidth)
+            } else {
+                Text(
+                    text = "NO ACTIVE BUDGET",
+                    style = TextStyle(
+                        color = WidgetText,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                )
+                Spacer(GlanceModifier.height(8.dp))
+                Text(
+                    text = "Tap to set budget",
+                    style = TextStyle(
+                        color = WidgetMutedText,
+                        fontSize = 13.sp,
+                    ),
+                )
+                Spacer(GlanceModifier.defaultWeight())
+                ProgressLabels(left = "0% spent", right = "0% left")
+                Spacer(GlanceModifier.height(8.dp))
+                ProgressBar(0f, progressWidth)
             }
+        }
+
+        Spacer(GlanceModifier.width(14.dp))
+
+        Column(
+            modifier = GlanceModifier.width(if (compactButtons) 88.dp else 96.dp),
+            verticalAlignment = Alignment.Vertical.CenterVertically,
+            horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
+        ) {
+            ActionCard(
+                iconRes = R.drawable.ic_tile_log_expense,
+                label = "Log\nExpense",
+                onClick = actionStartActivity(OpenLogExpenseActivity::class.java),
+                fill = WidgetAccentSoft,
+                content = WidgetAccentOnSoft,
+            )
+            Spacer(GlanceModifier.height(10.dp))
+            ActionCard(
+                iconRes = R.drawable.ic_widget_details,
+                label = if (state.hasActiveBudget) "View\nDetails" else "Set\nBudget",
+                onClick = actionStartActivity(if (state.hasActiveBudget) OpenHistoryActivity::class.java else OpenDashboardActivity::class.java),
+                fill = WidgetSurfaceAlt,
+                content = WidgetText,
+            )
         }
     }
 }
@@ -190,15 +181,9 @@ private fun ProgressLabels(
     right: String,
 ) {
     Row(modifier = GlanceModifier.fillMaxWidth()) {
-        Text(
-            text = left,
-            style = TextStyle(color = WidgetMutedText, fontSize = 11.sp, fontWeight = FontWeight.Medium),
-        )
+        Text(left, style = TextStyle(color = WidgetMutedText, fontSize = 11.sp, fontWeight = FontWeight.Medium))
         Spacer(GlanceModifier.defaultWeight())
-        Text(
-            text = right,
-            style = TextStyle(color = WidgetMutedText, fontSize = 11.sp, fontWeight = FontWeight.Medium),
-        )
+        Text(right, style = TextStyle(color = WidgetMutedText, fontSize = 11.sp, fontWeight = FontWeight.Medium))
     }
 }
 

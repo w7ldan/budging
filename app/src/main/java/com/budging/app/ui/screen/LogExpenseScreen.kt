@@ -41,6 +41,7 @@ import com.budging.app.domain.SplitExpensePlanner
 import com.budging.app.ui.component.BudgetChip
 import com.budging.app.ui.component.BudgetMetricRow
 import com.budging.app.ui.component.BudgetScaffoldCard
+import com.budging.app.ui.component.DateInputRow
 import com.budging.app.ui.component.Keypad
 import com.budging.app.ui.component.SectionHeader
 import com.budging.app.ui.component.categoryIcon
@@ -160,14 +161,7 @@ fun LogExpenseScreen(
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(spacing.md), verticalAlignment = Alignment.CenterVertically) {
-                CompactInputCard(
-                    modifier = Modifier.weight(1f),
-                    icon = { Icon(Icons.Outlined.CalendarToday, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                    label = "Date",
-                    value = dateText,
-                    hint = "YYYY-MM-DD",
-                    onValueChange = { dateText = it },
-                )
+                DateInputRow("Date", dateText, Modifier.weight(1f)) { dateText = it }
                 CompactInputCard(
                     modifier = Modifier.weight(1f),
                     icon = { Icon(Icons.Outlined.EditNote, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },

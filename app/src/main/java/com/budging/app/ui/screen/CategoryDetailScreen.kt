@@ -50,7 +50,7 @@ fun CategoryDetailScreen(
         verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
         item {
-            BudgetScaffoldCard(dark = true) {
+            BudgetScaffoldCard {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -59,20 +59,20 @@ fun CategoryDetailScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(spacing.md), verticalAlignment = Alignment.CenterVertically) {
                         CategoryIconBubble(state.categoryName, iconKey = state.iconKey)
                         Column {
-                            Text(state.categoryName, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimary)
-                            Text("Remaining for this budget period", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.78f))
+                            Text(state.categoryName, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Remaining for this budget period", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
                 Text(
                     formatCurrency(state.remainingAmountMinor, state.currencyCode),
                     style = MaterialTheme.typography.displayLarge,
-                    color = MaterialTheme.colorScheme.onPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 BudgetProgressBar(
                     progress = categoryProgress(state.spentAmountMinor, state.allocatedAmountMinor),
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    trackColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.12f),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
                 )
                 BudgetMetricRow("Allocated", formatCurrency(state.allocatedAmountMinor, state.currencyCode))
                 BudgetMetricRow("Spent", formatCurrency(state.spentAmountMinor, state.currencyCode))

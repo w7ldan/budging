@@ -33,8 +33,9 @@ import com.budging.app.domain.RECURRING_FREQUENCY_MONTHLY
 import com.budging.app.ui.component.BudgetScaffoldCard
 import com.budging.app.ui.component.BudgetChip
 import com.budging.app.ui.component.CategoryIconBubble
+import com.budging.app.ui.component.DateInputRow
+import com.budging.app.ui.component.IconDropdownField
 import com.budging.app.ui.component.SectionHeader
-import com.budging.app.ui.component.allCategoryIconOptions
 import com.budging.app.ui.component.categoryIcon
 import com.budging.app.ui.format.formatCurrency
 import com.budging.app.ui.theme.BudgingTheme
@@ -101,7 +102,12 @@ fun SubscriptionsScreen(
                     amountText = it.filter(Char::isDigit)
                 }
                 MinimalInputRow("Category", categoryName, modifier = Modifier.fillMaxWidth()) { categoryName = it }
-                IconGridPicker(selectedIconKey = iconKey, onSelect = { iconKey = it })
+                IconDropdownField(
+                    label = "Icon",
+                    selectedIconKey = iconKey,
+                    modifier = Modifier.fillMaxWidth(),
+                    onSelect = { iconKey = it },
+                )
                 Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
                     BudgetChip(
                         selected = frequency == RECURRING_FREQUENCY_EVERY_BUDGET_PERIOD,
@@ -121,8 +127,11 @@ fun SubscriptionsScreen(
                         dayOfMonthText = it.filter(Char::isDigit).take(2)
                     }
                 }
-                MinimalInputRow("Start Date", startDateText, "YYYY-MM-DD", Modifier.fillMaxWidth()) { startDateText = it }
-                MinimalInputRow("End Date", endDateText, "Optional", Modifier.fillMaxWidth()) { endDateText = it }
+                DateInputRow("Start Date", startDateText, Modifier.fillMaxWidth()) { startDateText = it }
+                DateInputRow("End Date", endDateText, Modifier.fillMaxWidth(), allowEmpty = true, emptyLabel = "No end date") { endDateText = it }
+                if (endDateText.isNotBlank()) {
+                    TextButton(onClick = { endDateText = "" }) { Text("Clear end date") }
+                }
                 MinimalInputRow("Note", note, modifier = Modifier.fillMaxWidth()) { note = it }
                 MinimalInputRow("Currency", currencyCode, modifier = Modifier.fillMaxWidth()) { currencyCode = it.uppercase().take(3) }
                 Row(
@@ -206,39 +215,6 @@ fun SubscriptionsScreen(
                         }
                         TextButton(onClick = { onDeleteTemplate(template.id) }) {
                             Text("Delete", color = MaterialTheme.colorScheme.error)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun IconGridPicker(
-    selectedIconKey: String,
-    onSelect: (String) -> Unit,
-) {
-    val spacing = BudgingTheme.spacing
-    Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-        Text("Icon", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        allCategoryIconOptions().chunked(4).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                row.forEach { option ->
-                    Surface(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { onSelect(option.key) },
-                        shape = RoundedCornerShape(14.dp),
-                        color = if (option.key == selectedIconKey) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            CategoryIconBubble(option.label, iconKey = option.key)
-                            Text(option.label, style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }

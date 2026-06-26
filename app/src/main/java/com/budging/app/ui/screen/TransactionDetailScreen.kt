@@ -97,15 +97,15 @@ fun TransactionDetailScreen(
                 ) {
                     CategoryIconBubble(state.categoryName ?: state.title)
                     Column {
-                        Text(state.title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimary)
-                        Text(state.paidDateLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.78f))
+                        Text(state.title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        Text(state.paidDateLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f))
                     }
                 }
             }
             Text(
                 formatCurrency(state.amountMinor, state.currencyCode),
                 style = MaterialTheme.typography.displayLarge,
-                color = MaterialTheme.colorScheme.onPrimary,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
             state.note?.let { note ->
                 BudgetMetricRow("Note", note)
