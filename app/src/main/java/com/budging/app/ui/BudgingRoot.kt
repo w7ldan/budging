@@ -4,11 +4,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.FloatingActionButton
@@ -21,10 +24,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -45,6 +48,7 @@ import com.budging.app.ui.screen.TransactionDetailScreen
 import com.budging.app.ui.screen.TransactionHistoryScreen
 import com.budging.app.ui.theme.BudgingTheme
 import java.time.LocalDate
+import kotlinx.coroutines.launch
 
 @Composable
 fun BudgingRoot(
@@ -53,6 +57,8 @@ fun BudgingRoot(
     onExternalRouteConsumed: () -> Unit = {},
 ) {
     val navController = rememberNavController()
+    val pagerState = rememberPagerState(pageCount = { topLevelDestinations.size })
+    val scope = rememberCoroutineScope()
     val dashboardState by viewModel.dashboardState.collectAsStateWithLifecycle()
     val budgetSetupState by viewModel.budgetSetupState.collectAsStateWithLifecycle()
     val expenseEntryState by viewModel.expenseEntryState.collectAsStateWithLifecycle()
@@ -66,6 +72,7 @@ fun BudgingRoot(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val destination = backStackEntry?.destination
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentTopLevelScreen = topLevelDestinations.getOrElse(pagerState.currentPage) { Screen.Dashboard }
 
     LaunchedEffect(message) {
         message?.let {
@@ -76,18 +83,30 @@ fun BudgingRoot(
 
     LaunchedEffect(externalRoute) {
         val route = externalRoute ?: return@LaunchedEffect
-        navController.navigate(route) {
-            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
+        val topLevelIndex = topLevelIndexForRoute(route)
+        if (topLevelIndex != null) {
+            navController.navigate(Screen.Home.route) {
+                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+            pagerState.animateScrollToPage(topLevelIndex)
+        } else {
+            navController.navigate(route) {
+                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
         }
         onExternalRouteConsumed()
     }
 
     Scaffold(
         topBar = {
+            val currentRoute = destination?.route ?: Screen.Home.route
             BudgetTopBar(
-                title = when (destination?.route) {
+                title = when (currentRoute) {
+                    Screen.Home.route -> topLevelTitle(currentTopLevelScreen)
                     Screen.BudgetSetup.route -> "Set Budget"
                     Screen.LogExpense.route -> "Log Expense"
                     Screen.CategoryDetail.route -> "Category Detail"
@@ -100,20 +119,12 @@ fun BudgingRoot(
                     Screen.CreateNextPeriod.route -> "Create Period"
                     else -> "Current Budget"
                 },
-                showBack = destination?.route in listOf(
-                    Screen.CategoryDetail.route,
-                    Screen.Subscriptions.route,
-                    Screen.TransactionHistory.route,
-                    Screen.TransactionDetail.route,
-                    Screen.EditTransaction.route,
-                    Screen.BudgetPeriodList.route,
-                    Screen.CreateNextPeriod.route,
-                ),
+                showBack = currentRoute != Screen.Home.route,
                 onBack = { if (navController.previousBackStackEntry != null) navController.popBackStack() },
             )
         },
         floatingActionButton = {
-            if (destination?.route == Screen.Dashboard.route) {
+            if (destination?.route == Screen.Home.route && currentTopLevelScreen == Screen.Dashboard) {
                 FloatingActionButton(
                     onClick = { navController.navigate(Screen.LogExpense.route) },
                     shape = RoundedCornerShape(999.dp),
@@ -138,13 +149,14 @@ fun BudgingRoot(
                 topLevelDestinations.forEach { item ->
                     BottomNavItemPill(
                         screen = item,
-                        selected = destination?.hierarchy?.any { it.route == item.route } == true,
+                        selected = currentTopLevelScreen.route == item.route,
                         onClick = {
-                            navController.navigate(item.route) {
+                            navController.navigate(Screen.Home.route) {
                                 popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                 launchSingleTop = true
                                 restoreState = true
                             }
+                            scope.launch { pagerState.animateScrollToPage(topLevelDestinations.indexOf(item)) }
                         },
                     )
                 }
@@ -153,45 +165,59 @@ fun BudgingRoot(
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Dashboard.route,
+            startDestination = Screen.Home.route,
             modifier = Modifier.padding(innerPadding),
         ) {
-            composable(Screen.Dashboard.route) {
-                DashboardScreen(
-                    state = dashboardState,
-                    onOpenCategory = {
-                        viewModel.loadCategory(it)
-                        navController.navigate(Screen.CategoryDetail.route)
-                    },
-                    onViewAllTransactions = { navController.navigate(Screen.TransactionHistory.route) },
-                    onTransactionClick = {
-                        viewModel.loadTransaction(it)
-                        navController.navigate(Screen.TransactionDetail.createRoute(it))
-                    },
-                    onCreateBudget = { navController.navigate(Screen.CreateNextPeriod.route) },
-                )
-            }
-            composable(Screen.BudgetSetup.route) {
-                BudgetSetupScreen(
-                    state = budgetSetupState,
-                    onSaveBudget = viewModel::saveBudgetPeriod,
-                    onSaveCategory = viewModel::saveCategory,
-                    onArchiveCategory = viewModel::setCategoryArchived,
-                    onDeleteCategory = viewModel::deleteCategory,
-                )
-            }
-            composable(Screen.LogExpense.route) {
-                LogExpenseScreen(
-                    state = expenseEntryState,
-                    previewCurrentImpact = viewModel::previewCurrentImpact,
-                    onSaveExpense = { amountMinor, categoryId, dateText, note, splitPeriodCount ->
-                        if (splitPeriodCount <= 1) {
-                            viewModel.logNormalExpense(amountMinor, categoryId, note, dateText)
-                        } else {
-                            viewModel.logSplitExpense(amountMinor, categoryId, note, dateText, splitPeriodCount)
-                        }
-                    },
-                )
+            composable(Screen.Home.route) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    beyondViewportPageCount = 1,
+                ) { page ->
+                    when (topLevelDestinations[page]) {
+                        Screen.Dashboard -> DashboardScreen(
+                            state = dashboardState,
+                            onOpenCategory = {
+                                viewModel.loadCategory(it)
+                                navController.navigate(Screen.CategoryDetail.route)
+                            },
+                            onViewAllTransactions = { navController.navigate(Screen.TransactionHistory.route) },
+                            onTransactionClick = {
+                                viewModel.loadTransaction(it)
+                                navController.navigate(Screen.TransactionDetail.createRoute(it))
+                            },
+                            onCreateBudget = { navController.navigate(Screen.CreateNextPeriod.route) },
+                        )
+                        Screen.BudgetSetup -> BudgetSetupScreen(
+                            state = budgetSetupState,
+                            onSaveBudget = viewModel::saveBudgetPeriod,
+                            onSaveCategory = viewModel::saveCategory,
+                            onArchiveCategory = viewModel::setCategoryArchived,
+                            onDeleteCategory = viewModel::deleteCategory,
+                        )
+                        Screen.LogExpense -> LogExpenseScreen(
+                            state = expenseEntryState,
+                            previewCurrentImpact = viewModel::previewCurrentImpact,
+                            onSaveExpense = { amountMinor, categoryId, dateText, note, splitPeriodCount ->
+                                if (splitPeriodCount <= 1) {
+                                    viewModel.logNormalExpense(amountMinor, categoryId, note, dateText)
+                                } else {
+                                    viewModel.logSplitExpense(amountMinor, categoryId, note, dateText, splitPeriodCount)
+                                }
+                            },
+                        )
+                        Screen.Settings -> SettingsScreen(
+                            backupMessage = viewModel.backupMessage.collectAsStateWithLifecycle().value,
+                            onExportJson = viewModel::exportJson,
+                            onImportJson = viewModel::importJson,
+                            onExportCsv = viewModel::exportCsv,
+                            onClearBackupMessage = viewModel::clearBackupMessage,
+                            onOpenPeriodList = { navController.navigate(Screen.BudgetPeriodList.route) },
+                            onOpenSubscriptions = { navController.navigate(Screen.Subscriptions.route) },
+                        )
+                        else -> Unit
+                    }
+                }
             }
             composable(Screen.CategoryDetail.route) {
                 CategoryDetailScreen(
@@ -200,17 +226,6 @@ fun BudgingRoot(
                         viewModel.loadTransaction(it)
                         navController.navigate(Screen.TransactionDetail.createRoute(it))
                     },
-                )
-            }
-            composable(Screen.Settings.route) {
-                SettingsScreen(
-                    backupMessage = viewModel.backupMessage.collectAsStateWithLifecycle().value,
-                    onExportJson = viewModel::exportJson,
-                    onImportJson = viewModel::importJson,
-                    onExportCsv = viewModel::exportCsv,
-                    onClearBackupMessage = viewModel::clearBackupMessage,
-                    onOpenPeriodList = { navController.navigate(Screen.BudgetPeriodList.route) },
-                    onOpenSubscriptions = { navController.navigate(Screen.Subscriptions.route) },
                 )
             }
             composable(Screen.Subscriptions.route) {
@@ -327,3 +342,16 @@ private val topLevelDestinations = listOf(
     Screen.LogExpense,
     Screen.Settings,
 )
+
+private fun topLevelIndexForRoute(route: String): Int? {
+    val index = topLevelDestinations.indexOfFirst { it.route == route }
+    return index.takeIf { it >= 0 }
+}
+
+private fun topLevelTitle(screen: Screen): String = when (screen) {
+    Screen.Dashboard -> "Current Budget"
+    Screen.BudgetSetup -> "Set Budget"
+    Screen.LogExpense -> "Log Expense"
+    Screen.Settings -> "Overview"
+    else -> "Current Budget"
+}

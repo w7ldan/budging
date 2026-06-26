@@ -183,7 +183,7 @@ fun BudgetMetricRow(
 fun BudgetProgressBar(
     progress: Float,
     modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.primary,
+    color: Color = AppPrimarySoft,
     trackColor: Color = MaterialTheme.colorScheme.surfaceVariant,
 ) {
     Box(

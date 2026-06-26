@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.window.Dialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -54,14 +55,45 @@ fun BudgetSetupScreen(
     var startDateText by rememberSaveable(state.activePeriodId) { mutableStateOf(state.startDateText) }
     var endDateText by rememberSaveable(state.activePeriodId) { mutableStateOf(state.endDateText) }
     var editingCategoryId by remember { mutableStateOf<Long?>(null) }
-    var categoryName by rememberSaveable(state.activePeriodId, editingCategoryId) { mutableStateOf("") }
-    var categoryAmountText by rememberSaveable(state.activePeriodId, editingCategoryId) { mutableStateOf("") }
-    var categoryIconKey by rememberSaveable(state.activePeriodId, editingCategoryId) { mutableStateOf("other") }
+    var categoryName by rememberSaveable(state.activePeriodId) { mutableStateOf("") }
+    var categoryAmountText by rememberSaveable(state.activePeriodId) { mutableStateOf("") }
+    var categoryIconKey by rememberSaveable(state.activePeriodId) { mutableStateOf("other") }
+    var editCategoryName by rememberSaveable(state.activePeriodId, editingCategoryId) { mutableStateOf("") }
+    var editCategoryAmountText by rememberSaveable(state.activePeriodId, editingCategoryId) { mutableStateOf("") }
+    var editCategoryIconKey by rememberSaveable(state.activePeriodId, editingCategoryId) { mutableStateOf("other") }
 
     val totalForPreview = totalAmountText.toLongOrNull() ?: 0L
     val projectedUnallocated = totalForPreview - state.categories
         .filterNot { it.isArchived }
-        .sumOf { if (it.id == editingCategoryId) 0L else it.allocatedAmountMinor } - (categoryAmountText.toLongOrNull() ?: 0L)
+        .sumOf { it.allocatedAmountMinor } - (categoryAmountText.toLongOrNull() ?: 0L)
+
+    fun dismissEditDialog() {
+        editingCategoryId = null
+        editCategoryName = ""
+        editCategoryAmountText = ""
+        editCategoryIconKey = "other"
+    }
+
+    if (editingCategoryId != null) {
+        CategoryEditDialog(
+            name = editCategoryName,
+            amountText = editCategoryAmountText,
+            iconKey = editCategoryIconKey,
+            onNameChange = { editCategoryName = it },
+            onAmountChange = { editCategoryAmountText = it.filter(Char::isDigit) },
+            onIconChange = { editCategoryIconKey = it },
+            onDismiss = ::dismissEditDialog,
+            onSave = {
+                onSaveCategory(
+                    editingCategoryId,
+                    editCategoryName,
+                    editCategoryAmountText.toLongOrNull() ?: 0L,
+                    editCategoryIconKey.ifBlank { resolveCategoryIconKey(editCategoryName) },
+                )
+                dismissEditDialog()
+            },
+        )
+    }
 
     LazyColumn(
         modifier = Modifier.padding(horizontal = spacing.xl),
@@ -134,27 +166,18 @@ fun BudgetSetupScreen(
                     Button(
                         onClick = {
                             onSaveCategory(
-                                editingCategoryId,
+                                null,
                                 categoryName,
                                 categoryAmountText.toLongOrNull() ?: 0L,
                                 categoryIconKey.ifBlank { resolveCategoryIconKey(categoryName) },
                             )
-                            editingCategoryId = null
                             categoryName = ""
                             categoryAmountText = ""
                             categoryIconKey = "other"
                         },
                         enabled = state.hasActiveBudget,
                     ) {
-                        Text(if (editingCategoryId == null) "Add Category" else "Update Category")
-                    }
-                    if (editingCategoryId != null) {
-                        TextButton(onClick = {
-                            editingCategoryId = null
-                            categoryName = ""
-                            categoryAmountText = ""
-                            categoryIconKey = "other"
-                        }) { Text("Cancel") }
+                        Text("Add Category")
                     }
                 }
                 if (!state.hasActiveBudget) {
@@ -193,9 +216,9 @@ fun BudgetSetupScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
                         TextButton(onClick = {
                             editingCategoryId = category.id
-                            categoryName = category.name
-                            categoryAmountText = category.allocatedAmountMinor.toString()
-                            categoryIconKey = category.iconKey
+                            editCategoryName = category.name
+                            editCategoryAmountText = category.allocatedAmountMinor.toString()
+                            editCategoryIconKey = category.iconKey
                         }) { Text("Edit") }
                         TextButton(onClick = { onArchiveCategory(category.id, !category.isArchived) }) {
                             Text(if (category.isArchived) "Restore" else "Archive")
@@ -203,6 +226,55 @@ fun BudgetSetupScreen(
                         if (!category.hasTransactions) {
                             TextButton(onClick = { onDeleteCategory(category.id) }) { Text("Delete") }
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CategoryEditDialog(
+    name: String,
+    amountText: String,
+    iconKey: String,
+    onNameChange: (String) -> Unit,
+    onAmountChange: (String) -> Unit,
+    onIconChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Text("Edit Category", style = MaterialTheme.typography.titleLarge)
+                MinimalInputRow("Category Name", name, modifier = Modifier.fillMaxWidth(), onValueChange = onNameChange)
+                IconDropdownField(
+                    label = "Category Icon",
+                    selectedIconKey = iconKey,
+                    modifier = Modifier.fillMaxWidth(),
+                    onSelect = onIconChange,
+                )
+                MinimalInputRow(
+                    "Allocated Amount",
+                    amountText,
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardType = KeyboardType.Number,
+                    onValueChange = onAmountChange,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End),
+                ) {
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    Button(onClick = onSave, shape = RoundedCornerShape(14.dp)) {
+                        Text("Save")
                     }
                 }
             }

@@ -82,13 +82,14 @@ private fun WidgetContent(
 ) {
     val compactButtons = containerWidth < 250.dp
     val progress = widgetProgress(state)
-    val progressWidth = (containerWidth - if (compactButtons) 132.dp else 140.dp).coerceAtLeast(116.dp)
+    val actionColumnWidth = if (compactButtons) 104.dp else 112.dp
+    val progressWidth = (containerWidth - actionColumnWidth - 34.dp).coerceAtLeast(108.dp)
 
     Row(
         modifier = GlanceModifier
             .fillMaxSize()
             .appWidgetBackground()
-            .cornerRadius(32.dp)
+            .cornerRadius(36.dp)
             .background(WidgetSurface)
             .clickable(actionStartActivity(OpenDashboardActivity::class.java))
             .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -152,13 +153,13 @@ private fun WidgetContent(
         Spacer(GlanceModifier.width(14.dp))
 
         Column(
-            modifier = GlanceModifier.width(if (compactButtons) 88.dp else 96.dp),
+            modifier = GlanceModifier.width(actionColumnWidth),
             verticalAlignment = Alignment.Vertical.CenterVertically,
             horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
         ) {
             ActionCard(
                 iconRes = R.drawable.ic_tile_log_expense,
-                label = "Log\nExpense",
+                label = "Log Expense",
                 onClick = actionStartActivity(OpenLogExpenseActivity::class.java),
                 fill = WidgetAccentSoft,
                 content = WidgetAccentOnSoft,
@@ -166,7 +167,7 @@ private fun WidgetContent(
             Spacer(GlanceModifier.height(10.dp))
             ActionCard(
                 iconRes = R.drawable.ic_widget_details,
-                label = if (state.hasActiveBudget) "View\nDetails" else "Set\nBudget",
+                label = if (state.hasActiveBudget) "View Details" else "Set Budget",
                 onClick = actionStartActivity(if (state.hasActiveBudget) OpenHistoryActivity::class.java else OpenDashboardActivity::class.java),
                 fill = WidgetSurfaceAlt,
                 content = WidgetText,
@@ -218,28 +219,28 @@ private fun ActionCard(
     fill: androidx.glance.unit.ColorProvider,
     content: androidx.glance.unit.ColorProvider,
 ) {
-    Column(
+    Row(
         modifier = GlanceModifier
             .fillMaxWidth()
+            .height(60.dp)
             .cornerRadius(18.dp)
             .background(fill)
             .clickable(onClick)
-            .padding(horizontal = 10.dp, vertical = 12.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.Vertical.CenterVertically,
-        horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
     ) {
         Image(
             provider = ImageProvider(iconRes),
             contentDescription = null,
-            modifier = GlanceModifier.width(18.dp).height(18.dp),
+            modifier = GlanceModifier.width(22.dp).height(22.dp),
             colorFilter = ColorFilter.tint(content),
         )
-        Spacer(GlanceModifier.height(6.dp))
+        Spacer(GlanceModifier.width(10.dp))
         Text(
             text = label,
             style = TextStyle(
                 color = content,
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
             ),
             maxLines = 2,

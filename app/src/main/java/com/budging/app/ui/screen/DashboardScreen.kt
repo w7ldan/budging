@@ -27,6 +27,7 @@ import com.budging.app.ui.component.BudgetScaffoldCard
 import com.budging.app.ui.component.CategoryIconBubble
 import com.budging.app.ui.component.SectionHeader
 import com.budging.app.ui.format.formatCurrency
+import com.budging.app.ui.theme.AppPrimarySoft
 import com.budging.app.ui.theme.BudgingTheme
 
 @Composable
@@ -95,7 +96,7 @@ fun DashboardScreen(
                     }
                     BudgetProgressBar(
                         progress = category.progressPercent / 100f,
-                        color = accent.tint,
+                        color = AppPrimarySoft,
                         trackColor = MaterialTheme.colorScheme.surfaceVariant,
                     )
                 }
@@ -176,7 +177,7 @@ private fun HeroCard(state: DashboardState) {
         }
         BudgetProgressBar(
             progress = spentProgress,
-            color = MaterialTheme.colorScheme.primary,
+            color = AppPrimarySoft,
             trackColor = MaterialTheme.colorScheme.surfaceVariant,
         )
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

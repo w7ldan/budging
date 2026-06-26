@@ -24,6 +24,7 @@ import com.budging.app.ui.component.BudgetScaffoldCard
 import com.budging.app.ui.component.CategoryIconBubble
 import com.budging.app.ui.component.SectionHeader
 import com.budging.app.ui.format.formatCurrency
+import com.budging.app.ui.theme.AppPrimarySoft
 import com.budging.app.ui.theme.BudgingTheme
 
 @Composable
@@ -71,7 +72,7 @@ fun CategoryDetailScreen(
                 )
                 BudgetProgressBar(
                     progress = categoryProgress(state.spentAmountMinor, state.allocatedAmountMinor),
-                    color = MaterialTheme.colorScheme.primary,
+                    color = AppPrimarySoft,
                     trackColor = MaterialTheme.colorScheme.surfaceVariant,
                 )
                 BudgetMetricRow("Allocated", formatCurrency(state.allocatedAmountMinor, state.currencyCode))
