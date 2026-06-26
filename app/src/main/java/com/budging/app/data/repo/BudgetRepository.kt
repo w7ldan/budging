@@ -541,7 +541,7 @@ class BudgetRepository(
     private suspend fun applyPendingImpactsForPeriod(
         periodId: Long,
         manualMapping: Map<Long, Long> = emptyMap(),
-        selectedImpactIds: Set<Long> = emptySet(),
+        selectedImpactIds: Set<Long>? = null, // null = apply all, empty set = apply none
     ): PendingApplicationResult {
         val period = budgetPeriodDao.getById(periodId) ?: return PendingApplicationResult()
         val pendingImpacts = budgetImpactDao.getPendingImpacts()
@@ -549,8 +549,8 @@ class BudgetRepository(
         var unresolvedCount = 0
 
         pendingImpacts.forEach { impact ->
-            // Only process selected impacts (if any are specified)
-            if (selectedImpactIds.isNotEmpty() && impact.id !in selectedImpactIds) {
+            // Filter by selected IDs when explicitly provided
+            if (selectedImpactIds != null && impact.id !in selectedImpactIds) {
                 return@forEach
             }
 
