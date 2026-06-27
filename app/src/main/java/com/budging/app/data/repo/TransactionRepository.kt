@@ -86,12 +86,11 @@ class TransactionRepository(
             ?: throw IllegalArgumentException("Transaction not found.")
         require(existing.splitCount <= 1) { "Editing split transaction amounts is not supported. Delete and recreate this split expense." }
 
-        val title = note.trim().ifBlank { category.name }
         val now = clock.nowMillis()
         database.withTransaction {
             transactionDao.update(
                 existing.copy(
-                    title = title,
+                    title = category.name,
                     note = note.trim().ifBlank { null },
                     amountMinor = amountMinor,
                     paidDate = paidDate,
@@ -124,7 +123,7 @@ class TransactionRepository(
             ?: throw IllegalArgumentException("Transaction not found.")
         val paidDate = Instant.ofEpochMilli(paidAtEpochMillis).atZone(clock.zoneId()).toLocalDate()
         val now = clock.nowMillis()
-        val title = note.trim().ifBlank { existing.title }
+        val title = budgetImpactDao.getByTransactionId(transactionId).firstOrNull()?.categoryNameSnapshot ?: existing.title
         database.withTransaction {
             transactionDao.update(
                 existing.copy(

@@ -14,13 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -31,7 +26,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -135,19 +129,6 @@ fun BudgingRoot(
                 showBack = currentRoute != Screen.Home.route,
                 onBack = { if (navController.previousBackStackEntry != null) navController.popBackStack() },
             )
-        },
-        floatingActionButton = {
-            if (destination?.route == Screen.Home.route && currentTopLevelScreen == Screen.Dashboard) {
-                FloatingActionButton(
-                    onClick = { navController.navigate(Screen.LogExpense.route) },
-                    shape = RoundedCornerShape(999.dp),
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Log expense")
-                }
-            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {

@@ -44,9 +44,8 @@ class ExpenseRepository(
             ?: throw IllegalArgumentException("Choose a valid category.")
         require(!category.isArchived) { "Archived categories cannot receive new expenses." }
 
-        val title = note.trim().ifBlank { category.name }
         insertAppliedTransaction(
-            title = title,
+            title = category.name,
             note = note,
             amountMinor = amountMinor,
             paidDate = paidDate,
@@ -87,12 +86,11 @@ class ExpenseRepository(
         val splitAmounts = SplitExpensePlanner.splitAmounts(amountMinor, periodCount)
         require(splitAmounts.sum() == amountMinor) { "Split impacts must equal the original payment." }
 
-        val title = note.trim().ifBlank { category.name }
         val now = clock.nowMillis()
         database.withTransaction {
             val transactionId = transactionDao.upsert(
                 TransactionEntity(
-                    title = title,
+                    title = category.name,
                     note = note.trim().ifBlank { null },
                     amountMinor = amountMinor,
                     paidDate = paidDate,
